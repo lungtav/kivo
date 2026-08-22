@@ -22,6 +22,6 @@ export const checkRateLimit = async (
   return {
     allowed: count <= limit,
     remaining: Math.max(0, limit - count),
-    retryAfter: ttl,
+    retryAfter: Math.max(0, ttl),
   };
 };

@@ -16,9 +16,10 @@ export const rateLimit = (options: RateLimitOption) => {
       const key = `${options.keyPrefix}:${identifier}`;
       const result = await checkRateLimit(
         key,
-        options.limit,
         options.windowSeconds,
+        options.limit,
       );
+      console.log("RESULT" + JSON.stringify(result));
 
       res.setHeader("X-RateLimit-Limit", options.limit);
       res.setHeader("X-RateLimit-Remaining", result.remaining);

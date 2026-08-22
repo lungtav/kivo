@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { rateLimit } from "../middleware/rate-limit.middleware.js";
 import { rateLimitConfig } from "../config/rate-limit.js";
-import { register } from "../modules/auth/auth.controller.js";
+import {
+  register,
+  //  verifyEmail
+} from "../modules/auth/auth.controller.js";
 
 const authRouter = Router();
+
 
 authRouter.post(
   "/register",
@@ -11,4 +15,6 @@ authRouter.post(
   register,
 );
 
-export {authRouter}
+
+
+export { authRouter };
