@@ -17,11 +17,11 @@ CREATE TABLE IF NOT EXISTS users(
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique 
-ON users (LOWER(email))
+ON users (email)
 WHERE deleted_at IS NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique 
-ON users (LOWER(username))
+ON users (username)
 WHERE deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_updated_at()

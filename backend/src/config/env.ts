@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 
 dotenv.config();
-const port = Number(process.env.PORT)??5000;
+const port = Number(process.env.PORT) ?? 5000;
 
 if (isNaN(port)) {
   throw new Error(`Invalid PORT value: ${port}`);
@@ -28,4 +28,7 @@ export const env = {
       ? "debug"
       : "info",
   JWT_SECRET_KEY: validateURL("JWT_SECRET_KEY"),
+  redisUrl: validateURL("REDIS_URL"),
+  resendKey: validateURL("RESEND_KEY"),
+  APP_URL: validateURL("APP_URL")
 };
