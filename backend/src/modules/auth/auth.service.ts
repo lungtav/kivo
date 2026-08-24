@@ -148,12 +148,11 @@ export const refresh = async (rawRefreshToken: string) => {
   const { rawToken: newRawToken, tokenHash: newTokenHash } =
     generateRefreshToken();
 
-  await authRepository.revokeRefreshToken(storedToken.id);
-
-  await authRepository.createRefreshToken({
+  await authRepository.rotateRefreshToken({
+    oldTokenId: storedToken.id,
     user_id: storedToken.user_id,
-    token_hash: newTokenHash,
     session_id: storedToken.session_id,
+    token_hash: newTokenHash,
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   });
 
@@ -223,4 +222,10 @@ export const resendVerification = async (email: string) => {
       removeOnFail: false,
     },
   );
+};
+
+export const logout = async (rawRefreshToken: string) => {
+  const tokenHash = createHash("sha256").update(rawRefreshToken).digest("hex");
+
+  await authRepository.revokeRefreshTokenByHash(tokenHash);
 };

@@ -3,6 +3,10 @@ export const rateLimitConfig = {
     limit: 5,
     windowSeconds: 15 * 60,
   },
+  logout: {
+    limit: 20,
+    windowSeconds: 60,
+  },
 
   verifyEmail: {
     limit: 5,

@@ -7,6 +7,14 @@ import * as authService from "./auth.service.js";
 import { env } from "../../config/env.js";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError.js";
 
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/api/auth",
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+};
+
 export const register = asyncHandler(
   async (req: Request<{}, {}, RegisterUserInput>, res: Response) => {
     const parsed = RegisterUserSchema.safeParse(req.body);
@@ -39,13 +47,7 @@ export const login = asyncHandler(
     const result = await authService.login(parsed.data);
 
     res
-      .cookie("refresh_token", result.refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/api/auth",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      })
+      .cookie("refresh_token", result.refreshToken, refreshCookieOptions)
       .status(200)
       .json({
         message: "Login successful",
@@ -97,15 +99,29 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.refresh(refreshToken);
 
   res
-    .cookie("refresh_token", result.refreshToken, {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "api/auth",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    })
+    .cookie("refresh_token", result.refreshToken, refreshCookieOptions)
     .status(200)
     .json({
       accessToken: result.accessToken,
+    });
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refresh_token;
+
+  if (refreshToken) {
+    await authService.logout(refreshToken);
+  }
+
+  res
+    .clearCookie("refresh_token", {
+      httpOnly: refreshCookieOptions.httpOnly,
+      secure: refreshCookieOptions.secure,
+      sameSite: refreshCookieOptions.sameSite,
+      path: refreshCookieOptions.path,
+    })
+    .status(200)
+    .json({
+      message: "Logout successful",
     });
 });

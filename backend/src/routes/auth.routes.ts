@@ -7,6 +7,7 @@ import {
   verifyEmail,
   resendVerification,
   refresh,
+  logout,
 } from "../modules/auth/auth.controller.js";
 
 const authRouter = Router();
@@ -39,6 +40,7 @@ authRouter.post(
   }),
   resendVerification,
 );
+
 authRouter.post(
   "/refresh",
   rateLimit({
@@ -46,6 +48,14 @@ authRouter.post(
     keyPrefix: "rate-limit:refresh",
   }),
   refresh,
+);
+authRouter.post(
+  "/logout",
+  rateLimit({
+    ...rateLimitConfig.logout,
+    keyPrefix: "rate-limit:logout",
+  }),
+  logout,
 );
 
 export { authRouter };
