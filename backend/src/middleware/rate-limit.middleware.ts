@@ -11,7 +11,8 @@ interface RateLimitOption {
 export const rateLimit = (options: RateLimitOption) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const identifier = req.ip ?? "unknown";
+      const identifier = req.ip ?? "unknown" + req.get("user-agent");
+      console.log(identifier);
 
       const key = `${options.keyPrefix}:${identifier}`;
       const result = await checkRateLimit(

@@ -3,18 +3,49 @@ import { rateLimit } from "../middleware/rate-limit.middleware.js";
 import { rateLimitConfig } from "../config/rate-limit.js";
 import {
   register,
-  //  verifyEmail
+  login,
+  verifyEmail,
+  resendVerification,
+  refresh,
 } from "../modules/auth/auth.controller.js";
 
 const authRouter = Router();
-
 
 authRouter.post(
   "/register",
   rateLimit({ ...rateLimitConfig.register, keyPrefix: "rate-limit:register" }),
   register,
 );
+authRouter.post(
+  "/login",
+  rateLimit({ ...rateLimitConfig.login, keyPrefix: "rate-limit:login" }),
+  login,
+);
 
+authRouter.post(
+  "/verify-email",
+  rateLimit({
+    ...rateLimitConfig.verifyEmail,
+    keyPrefix: "rate-limit:verify-email",
+  }),
+  verifyEmail,
+);
 
+authRouter.post(
+  "/resend-verification",
+  rateLimit({
+    ...rateLimitConfig.resendVerification,
+    keyPrefix: "rate-limit:resend-verification",
+  }),
+  resendVerification,
+);
+authRouter.post(
+  "/refresh",
+  rateLimit({
+    ...rateLimitConfig.refresh,
+    keyPrefix: "rate-limit:refresh",
+  }),
+  refresh,
+);
 
 export { authRouter };

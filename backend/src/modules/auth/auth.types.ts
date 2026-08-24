@@ -1,6 +1,7 @@
 import z from "zod";
-import { RegisterUserSchema } from "./auth.schema.js";
+import { RegisterUserSchema, LoginSchema } from "./auth.schema.js";
 
+export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterUserInput = z.infer<typeof RegisterUserSchema>;
 export interface CreateUserInput {
   email: string;

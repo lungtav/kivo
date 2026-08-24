@@ -1,7 +1,10 @@
 import * as z from "zod";
 
 export const RegisterUserSchema = z.object({
-  email: z.email("Enter a valid email address").max(255, "Email is too long").toLowerCase(),
+  email: z
+    .email("Enter a valid email address")
+    .max(255, "Email is too long")
+    .toLowerCase(),
   username: z
     .string()
     .min(3, "username must be at least 3 characters ")
@@ -11,4 +14,9 @@ export const RegisterUserSchema = z.object({
     .string()
     .min(1, "Display name is required")
     .max(100, "Display name must be at most 100 characters"),
+});
+
+export const LoginSchema = z.object({
+  email: z.email().toLowerCase(),
+  password: z.string().min(1),
 });
