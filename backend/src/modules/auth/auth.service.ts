@@ -175,7 +175,7 @@ export const verifyEmail = async (token: string) => {
   }
 
   if (verificationToken.used_at) {
-    throw new ConflictError("verification link has already been used");
+    return;
   }
 
   if (new Date() > verificationToken.expires_at) {
@@ -196,6 +196,31 @@ export const resendVerification = async (email: string) => {
     throw new ValidationError("Unable to resend verification email");
   }
 
+  await resendVerificationForUser(user);
+};
+
+export const resendVerificationFromToken = async (rawToken: string) => {
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const verificationToken = await authRepository.findVerificationToken(tokenHash);
+
+  if (!verificationToken) {
+    throw new ValidationError("Unable to resend verification email");
+  }
+
+  const user = await authRepository.findUserById(verificationToken.user_id);
+  if (!user) {
+    throw new ValidationError("Unable to resend verification email");
+  }
+
+  await resendVerificationForUser(user);
+};
+
+const resendVerificationForUser = async (user: {
+  id: string;
+  email: string;
+  display_name: string;
+  email_verified_at: Date | null;
+}) => {
   if (user.email_verified_at) {
     throw new ConflictError("Email is already verified");
   }

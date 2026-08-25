@@ -30,6 +30,19 @@ export const findUserByEmail = async (email: string) => {
   return userResult.rows[0];
 };
 
+export const findUserById = async (id: string) => {
+  const userResult = await db.query(
+    `
+    SELECT id, email, username, display_name, email_verified_at FROM users
+    WHERE deleted_at IS NULL
+    AND id = $1
+    LIMIT 1
+    `,
+    [id],
+  );
+  return userResult.rows[0];
+};
+
 export const createUser = async (input: CreateUserInput) => {
   const { email, username, password_hash, display_name } = input;
 

@@ -74,14 +74,16 @@ export const verifyEmail = asyncHandler(
 );
 
 export const resendVerification = asyncHandler(
-  async (req: Request<{}, {}, { email?: string }>, res: Response) => {
-    const { email } = req.body;
+  async (req: Request<{}, {}, { email?: string; token?: string }>, res: Response) => {
+    const { email, token } = req.body;
 
-    if (!email) {
-      throw new ValidationError("email is required");
+    if (token) {
+      await authService.resendVerificationFromToken(token);
+    } else if (email) {
+      await authService.resendVerification(email);
+    } else {
+      throw new ValidationError("email or verification token is required");
     }
-
-    await authService.resendVerification(email);
 
     res.status(200).json({
       message: "verification email sent successfully",
