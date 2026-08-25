@@ -63,15 +63,11 @@ export const storeVerificationToken = async (
 ) => {
   const { user_id, token_hash } = input;
 
-  //expiration ()
-  const EXPIRE_DURATION = 10 * 60 * 1000;
-  const expires_at = new Date(Date.now() + EXPIRE_DURATION);
-
   await db.query(
     `
         INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) 
-        VALUES ($1, $2 ,$3)`,
-    [user_id, token_hash, expires_at],
+        VALUES ($1, $2, NOW() + INTERVAL '10 minutes')`,
+    [user_id, token_hash],
   );
 };
 
@@ -124,6 +120,20 @@ export const findVerificationToken = async (tokenHash: string) => {
     `
     SELECT id, expires_at, used_at, user_id FROM email_verification_tokens
     WHERE token_hash =$1
+    LIMIT 1
+    `,
+    [tokenHash],
+  );
+
+  return tokenResult.rows[0];
+};
+
+export const findActiveVerificationToken = async (tokenHash: string) => {
+  const tokenResult = await db.query(
+    `
+    SELECT id, expires_at, used_at, user_id FROM email_verification_tokens
+    WHERE token_hash = $1
+      AND expires_at > CURRENT_TIMESTAMP
     LIMIT 1
     `,
     [tokenHash],

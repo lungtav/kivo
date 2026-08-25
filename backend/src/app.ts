@@ -4,7 +4,6 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { notFoundMiddleware } from "./middleware/not-found.middleware.js";
-import { rateLimit } from "./middleware/rate-limit.middleware.js";
 import { appRouter } from "./routes/index.js";
 import { env } from "./config/env.js";
 
@@ -18,9 +17,6 @@ export const createApp = () => {
   app.use(express.urlencoded({ extended: true }));
 
   app.use("/api", appRouter);
-  app.use(rateLimit);
-
-
   app.use(notFoundMiddleware);
   app.use(errorMiddleware);
 

@@ -13,6 +13,7 @@ import { emailQueue } from "../../infrastructure/queue/queues/email-queue.js";
 import { env } from "../../config/env.js";
 import { ValidationError } from "../../shared/errors/ValidationError.js";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError.js";
+import { EmailUnverifiedError } from "../../shared/errors/EmailUnverifiedError.js";
 
 export const register = async (input: RegisterUserInput) => {
   const { email, username, password, display_name } = input;
@@ -52,8 +53,6 @@ export const register = async (input: RegisterUserInput) => {
 
   //generate verification code
   const { rawToken, tokenHash } = generateVerificationToken();
-  console.log(rawToken);
-
   //store email verification token table
   await authRepository.storeVerificationToken({
     user_id: createdUser.id,
@@ -67,6 +66,7 @@ export const register = async (input: RegisterUserInput) => {
       email,
       display_name: createdUser.display_name,
       verify_url: `${env.APP_URL}/verify-email?token=${rawToken}`,
+      token_hash: tokenHash,
     },
     {
       attempts: 3,
@@ -91,14 +91,14 @@ export const login = async (input: LoginInput) => {
     throw new UnauthorizedError("Invalid email or password");
   }
 
-  if (!user.email_verified_at) {
-    throw new UnauthorizedError("Please verify your email first");
-  }
-
   const passwordValid = await compare(password, user.password_hash);
 
   if (!passwordValid) {
     throw new UnauthorizedError("Invalid email or password");
+  }
+
+  if (!user.email_verified_at) {
+    throw new EmailUnverifiedError();
   }
 
   const accessToken = generateAccessToken(user.id);
@@ -168,7 +168,7 @@ export const verifyEmail = async (token: string) => {
 
   //find token
   const verificationToken =
-    await authRepository.findVerificationToken(tokenHash);
+    await authRepository.findActiveVerificationToken(tokenHash);
 
   if (!verificationToken) {
     throw new ValidationError("invalid or expired link");
@@ -176,10 +176,6 @@ export const verifyEmail = async (token: string) => {
 
   if (verificationToken.used_at) {
     return;
-  }
-
-  if (new Date() > verificationToken.expires_at) {
-    throw new ValidationError("invalid or expired link");
   }
 
   //update user table
@@ -236,6 +232,7 @@ const resendVerificationForUser = async (user: {
       email: user.email,
       display_name: user.display_name,
       verify_url: `${env.APP_URL}/verify-email?token=${rawToken}`,
+      token_hash: tokenHash,
     },
     {
       attempts: 3,

@@ -14,7 +14,7 @@ export function verifyEmailTemplate(display_name: string, verify_url: string) {
           Verify Email
         </a>
         <p style="color: #666; font-size: 13px;">
-          This link expires in 24 hours. If you didn't create this account, you can ignore this email.
+          This link expires in 10 minutes. If you didn't create this account, you can ignore this email.
         </p>
       </div>
     `,

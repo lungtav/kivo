@@ -12,7 +12,6 @@ export const rateLimit = (options: RateLimitOption) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const identifier = req.ip ?? "unknown" + req.get("user-agent");
-      console.log(identifier);
 
       const key = `${options.keyPrefix}:${identifier}`;
       const result = await checkRateLimit(
@@ -20,8 +19,6 @@ export const rateLimit = (options: RateLimitOption) => {
         options.windowSeconds,
         options.limit,
       );
-      console.log("RESULT" + JSON.stringify(result));
-
       res.setHeader("X-RateLimit-Limit", options.limit);
       res.setHeader("X-RateLimit-Remaining", result.remaining);
 

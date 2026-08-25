@@ -8,6 +8,7 @@ export const emailWorker = new Worker(
   async (job) => {
     if (job.name === "send_verification_email") {
       const { email, display_name, verify_url } = job.data;
+
       const { subject, html } = verifyEmailTemplate(display_name, verify_url);
 
       try {

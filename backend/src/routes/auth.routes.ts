@@ -34,10 +34,10 @@ authRouter.post(
 
 authRouter.post(
   "/resend-verification",
-  rateLimit({
-    ...rateLimitConfig.resendVerification,
-    keyPrefix: "rate-limit:resend-verification",
-  }),
+  // rateLimit({
+  //   ...rateLimitConfig.resendVerification,
+  //   keyPrefix: "rate-limit:resend-verification",
+  // }),
   resendVerification,
 );
 
