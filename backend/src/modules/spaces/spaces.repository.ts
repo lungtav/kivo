@@ -41,3 +41,55 @@ export const createSpace = async (
     client.release();
   }
 };
+
+export const findSpaceById = async (id: string) => {
+  const result = await db.query(
+    `SELECT id, name, slug, avatar_url, created_by, created_at
+     FROM spaces
+     WHERE id = $1 AND deleted_at IS NULL`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const getMembership = async (spaceId: string, userId: string) => {
+  const result = await db.query(
+    `SELECT role FROM space_members
+     WHERE space_id = $1 AND user_id = $2 AND left_at IS NULL`,
+    [spaceId, userId],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const updateSpace = async (
+  id: string,
+  fields: { name?: string; avatar_url?: string; bio?: string },
+) => {
+  console.log(fields);
+  const setClauses: string[] = [];
+  const values: unknown[] = [];
+  let i = 1;
+
+  if (fields.name !== undefined) {
+    setClauses.push(`name = $${i++}`);
+    values.push(fields.name);
+  }
+  if (fields.avatar_url !== undefined) {
+    setClauses.push(`avatar_url = $${i++}`);
+    values.push(fields.avatar_url);
+  }
+  if (fields.bio !== undefined) {
+    setClauses.push(`bio = $${i++}`);
+    values.push(fields.bio);
+  }
+
+  values.push(id);
+
+  const result = await db.query(
+    `UPDATE spaces SET ${setClauses.join(", ")}
+     WHERE id = $${i} AND deleted_at IS NULL
+     RETURNING id, name,bio, slug, avatar_url, created_by, created_at`,
+    values,
+  );
+  return result.rows[0] ?? null;
+};

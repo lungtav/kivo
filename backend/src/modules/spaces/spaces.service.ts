@@ -1,5 +1,10 @@
 import * as spacesRepository from "./spaces.repository.js";
+import type { UpdateSpaceInput } from "./spaces.types.js";
 import { ConflictError } from "../../shared/errors/ConflictError.js";
+import { ForbiddenError } from "../../shared/errors/ForbiddenError.js";
+import { NotFoundError } from "../../shared/errors/NotFoundError.js";
+
+const PG_UNIQUE_VIOLATION = "23505";
 
 function slugify(name: string) {
   const base = name
@@ -10,8 +15,6 @@ function slugify(name: string) {
   const suffix = Math.random().toString(36).slice(2, 6);
   return `${base}-${suffix}`;
 }
-
-const PG_UNIQUE_VIOLATION = "23505";
 
 export const createSpace = async (userId: string, name: string) => {
   const slug = slugify(name);
@@ -29,4 +32,31 @@ export const createSpace = async (userId: string, name: string) => {
 
     throw error;
   }
+};
+
+export const updateSpaceDetails = async (
+  spaceId: string,
+  userId: string,
+  input: UpdateSpaceInput,
+) => {
+  const space = await spacesRepository.findSpaceById(spaceId);
+  if (!space) {
+    throw new NotFoundError("space not found");
+  }
+
+  const membership = await spacesRepository.getMembership(spaceId, userId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can update this space");
+  }
+
+  const updated = await spacesRepository.updateSpace(spaceId, input);
+  if (!updated) {
+    throw new NotFoundError("space not found");
+  }
+
+  return updated;
 };
