@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthField } from "./AuthField";
 import { Brand } from "../brand/Brand";
 import { login } from "../../lib/auth";
+import { ApiError } from "../../lib/api";
 
 const initialForm = { email: "", password: "" };
 
@@ -40,6 +41,11 @@ export function LoginForm() {
       localStorage.setItem("kivo_access_token", accessToken);
       navigate("/app");
     } catch (submissionError) {
+      if (submissionError instanceof ApiError && submissionError.code === "EMAIL_UNVERIFIED") {
+        sessionStorage.setItem("kivo_pending_verification_email", form.email);
+        navigate("/verify-account", { state: { email: form.email } });
+        return;
+      }
       setError(
         submissionError instanceof Error
           ? submissionError.message

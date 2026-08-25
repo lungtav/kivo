@@ -6,6 +6,7 @@ import CheckEmailPage from "./pages/CheckEmailPage";
 import WorkspacePage from "./pages/WorkspacePage";
 import LoginPage from "./pages/LoginPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import VerifyAccountPage from "./pages/VerifyAccountPage";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/check-email" element={<CheckEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/verify-account" element={<VerifyAccountPage />} />
       <Route path="/app" element={<WorkspacePage />} />
     </Routes>
   );

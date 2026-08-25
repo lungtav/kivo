@@ -15,6 +15,6 @@ export const register = (input: RegisterInput) => apiRequest("/api/auth/register
 
 export const login = (input: Pick<RegisterInput, "email" | "password">) => apiRequest<LoginResponse>("/api/auth/login", { method: "POST", body: JSON.stringify(input) });
 
-export const verifyEmail = (token: string) => apiRequest<{ message: string }>(`/api/auth/verify-email?token=${encodeURIComponent(token)}`);
+export const verifyEmail = (token: string) => apiRequest<{ message: string }>(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, { method: "POST" }, 0);
 
 export const resendVerification = (input: { email?: string; token?: string }) => apiRequest<{ message: string }>("/api/auth/resend-verification", { method: "POST", body: JSON.stringify(input) });
