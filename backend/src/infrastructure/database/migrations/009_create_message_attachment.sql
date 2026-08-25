@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS message_attachments (
     CHECK (duration_seconds >= 0),
   file_size_bytes BIGINT 
     CHECK (file_size_bytes >= 0),
-  mime_type    TEXT,
+  mime_type    TEXT NOT NULL,
   width        INT 
     CHECK (width > 0),
   height       INT

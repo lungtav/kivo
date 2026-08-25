@@ -19,7 +19,7 @@ export const rateLimitConfig = {
   },
 
   resendVerification: {
-    limit: 3,
+    limit: 5,
     windowSeconds: 15 * 60,
   },
 
