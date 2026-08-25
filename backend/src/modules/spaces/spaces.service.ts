@@ -60,3 +60,7 @@ export const updateSpaceDetails = async (
 
   return updated;
 };
+
+export const listSpaces = async (userId: string) => {
+  return spacesRepository.listSpacesForUser(userId);
+};

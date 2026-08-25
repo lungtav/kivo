@@ -51,3 +51,13 @@ export const updateSpace = asyncHandler(
     res.status(200).json({ message: "space updated successfully", space });
   },
 );
+
+export const listSpaces = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user.id;
+
+  if (!userId) {
+    throw new UnauthorizedError("unauthorized access");
+  }
+  const spaces = await spacesService.listSpaces(userId);
+  res.json({ message: "space fetched successfully", spaces });
+});

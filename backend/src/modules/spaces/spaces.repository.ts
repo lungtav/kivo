@@ -93,3 +93,15 @@ export const updateSpace = async (
   );
   return result.rows[0] ?? null;
 };
+
+export const listSpacesForUser = async (userId: string) => {
+  const result = await db.query(
+    `SELECT s.id, s.name, s.slug, s.avatar_url, s.created_by, sm.joined_at, sm.role
+     FROM spaces s
+     JOIN space_members sm ON sm.space_id = s.id
+     WHERE sm.user_id = $1 AND sm.left_at IS NULL AND s.deleted_at IS NULL
+     ORDER BY sm.joined_at DESC`,
+    [userId],
+  );
+  return result.rows;
+};
