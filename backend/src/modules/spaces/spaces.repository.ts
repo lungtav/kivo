@@ -105,3 +105,49 @@ export const listSpacesForUser = async (userId: string) => {
   );
   return result.rows;
 };
+
+export const getSpaceStructure = async (spaceId: string) => {
+  const [spaceResult, categoriesResult, channelsResult] = await Promise.all([
+    db.query(
+      `SELECT id, name, slug, avatar_url, created_by, created_at
+       FROM spaces
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [spaceId],
+    ),
+    db.query(
+      `SELECT id, name, position
+       FROM categories
+       WHERE space_id = $1 AND deleted_at IS NULL
+       ORDER BY position ASC`,
+      [spaceId],
+    ),
+    db.query(
+      `SELECT id, name, type, position, category_id
+       FROM conversations
+       WHERE space_id = $1 AND type = 'channel' AND deleted_at IS NULL
+       ORDER BY position ASC`,
+      [spaceId],
+    ),
+  ]);
+
+  const space = spaceResult.rows[0];
+  if (!space) {
+    return null;
+  }
+
+  const categories = categoriesResult.rows;
+  const channels = channelsResult.rows;
+
+  const categorized = categories.map((category) => ({
+    ...category,
+    channels: channels.filter((c) => c.category_id === category.id),
+  }));
+
+  const uncategorized = channels.filter((c) => c.category_id === null);
+
+  return {
+    ...space,
+    categories: categorized,
+    uncategorized_channels: uncategorized,
+  };
+};

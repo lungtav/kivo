@@ -64,3 +64,17 @@ export const updateSpaceDetails = async (
 export const listSpaces = async (userId: string) => {
   return spacesRepository.listSpacesForUser(userId);
 };
+
+export const getSpace = async (spaceId: string, userId: string) => {
+  const membership = await spacesRepository.getMembership(spaceId, userId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+
+  const space = await spacesRepository.getSpaceStructure(spaceId);
+  if (!space) {
+    throw new NotFoundError("space not found");
+  }
+
+  return { ...space, role: membership.role };
+};
