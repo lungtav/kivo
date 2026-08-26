@@ -5,7 +5,7 @@ import {
   listSpaces,
   getSpace,
 } from "../modules/spaces/spaces.controller.js";
-import { createInvite } from "../modules/invites/invites.controller.js";
+import { createInvite, joinSpace } from "../modules/invites/invites.controller.js";
 
 const spacesRouter = Router();
 
@@ -15,5 +15,6 @@ spacesRouter.get("/", listSpaces);
 spacesRouter.get("/:spaceId", getSpace);
 
 spacesRouter.post("/:spaceId/invites", createInvite);
+spacesRouter.post("/join/:code", joinSpace);
 
 export { spacesRouter };

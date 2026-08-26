@@ -14,7 +14,6 @@ export const findUser = async (email: string, username: string) => {
     `,
     [email, username],
   );
-
   return userResult.rows[0];
 };
 export const findUserByEmail = async (email: string) => {

@@ -31,3 +31,15 @@ export const createInvite = asyncHandler(
     res.status(201).json({ message: "Invite created successfully", invite });
   },
 );
+
+export const joinSpace = asyncHandler(
+  async (req: Request<{ code: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+    const result = await invitesService.joinSpace(req.params.code, req.user.id);
+    res.status(200).json({ message: "space joined", result });
+  },
+);

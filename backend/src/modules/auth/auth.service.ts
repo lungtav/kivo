@@ -197,7 +197,8 @@ export const resendVerification = async (email: string) => {
 
 export const resendVerificationFromToken = async (rawToken: string) => {
   const tokenHash = createHash("sha256").update(rawToken).digest("hex");
-  const verificationToken = await authRepository.findVerificationToken(tokenHash);
+  const verificationToken =
+    await authRepository.findVerificationToken(tokenHash);
 
   if (!verificationToken) {
     throw new ValidationError("Unable to resend verification email");

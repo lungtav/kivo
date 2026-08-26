@@ -4,6 +4,8 @@ import { ForbiddenError } from "../../shared/errors/ForbiddenError.js";
 import * as spacesRepository from "../spaces/spaces.repository.js";
 import * as invitesRepository from "./invites.repository.js";
 import { generateInviteCode } from "../../shared/utils/invite.js";
+import { ConflictError } from "../../shared/errors/ConflictError.js";
+import { AppError } from "../../shared/errors/AppError.js";
 
 export const createInvite = async (
   spaceId: string,
@@ -30,4 +32,25 @@ export const createInvite = async (
     options.maxUses ?? null,
     expiresAt,
   );
+};
+
+export const joinSpace = async (code: string, userId: string) => {
+  const result = await invitesRepository.redeemInvite(code, userId);
+
+  switch (result.status) {
+    case "joined":
+      return { spaceId: result.spaceId };
+    case "already_member":
+      throw new ConflictError("you're already in this space");
+    case "not_found":
+      throw new NotFoundError("invite not found");
+    case "expired":
+      throw new AppError(410, "INVITE_EXPIRED", "this invite has expired");
+    case "exhausted":
+      throw new AppError(
+        410,
+        "INVITE_EXHAUSTED",
+        "this invite has reached its limit",
+      );
+  }
 };
