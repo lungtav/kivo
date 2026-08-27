@@ -1,6 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
-
-export function WorkspaceShell({ children }: { children: ReactNode }) {
-  return <main className="flex min-h-svh bg-slate-50"><WorkspaceSidebar /><section className="flex min-w-0 flex-1 flex-col">{children}</section></main>;
-}
+type WorkspaceShellProps = { children: (props: { selectedSpace: string; selectedChannel: string }) => ReactNode };
+export function WorkspaceShell({ children }: WorkspaceShellProps) { const [isSidebarOpen, setIsSidebarOpen] = useState(false); const [selectedSpace, setSelectedSpace] = useState("Design team"); const [selectedChannel, setSelectedChannel] = useState("sprint-planning"); return <main className="flex h-svh overflow-hidden bg-[#17171b]"><WorkspaceSidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen((open) => !open)} selectedSpace={selectedSpace} selectedChannel={selectedChannel} onSelectSpace={(space) => { setSelectedSpace(space); setSelectedChannel("general"); }} onSelectChannel={setSelectedChannel} /><section className="flex min-w-0 flex-1 flex-col overflow-hidden">{children({ selectedSpace, selectedChannel })}</section></main>; }
