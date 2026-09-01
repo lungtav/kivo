@@ -1,6 +1,6 @@
 export const rateLimitConfig = {
   login: {
-    limit: 5,
+    limit: 10,
     windowSeconds: 15 * 60,
   },
   logout: {

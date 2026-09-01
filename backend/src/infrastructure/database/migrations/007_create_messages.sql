@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS messages(
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX IF NOT EXISTS idx_messages_converstion_created 
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_created 
     ON messages (conversation_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_messages_reply_to

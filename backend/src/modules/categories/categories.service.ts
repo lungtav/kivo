@@ -24,3 +24,10 @@ export const createCategory = async (
   const nextPosition = (await categoriesRepository.getMaxPosition(spaceId)) + 1;
   return categoriesRepository.createCategory(spaceId, input.name, nextPosition);
 };
+
+export const deleteCategory = async (categoryId: string, userId: string) => {
+  const category = await categoriesRepository.findCategoryById(categoryId);
+  if (!category) throw new NotFoundError("category not found");
+  await requireSpaceAdmin(category.space_id, userId);
+  await categoriesRepository.deleteCategory(categoryId);
+};

@@ -94,6 +94,16 @@ export const updateSpace = async (
   return result.rows[0] ?? null;
 };
 
+export const deleteSpace = async (spaceId: string) => {
+  const result = await db.query(
+    `UPDATE spaces SET deleted_at = NOW()
+     WHERE id = $1 AND deleted_at IS NULL
+     RETURNING id`,
+    [spaceId],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const listSpacesForUser = async (userId: string) => {
   const result = await db.query(
     `SELECT s.id, s.name, s.slug, s.avatar_url, s.created_by, sm.joined_at, sm.role
@@ -106,7 +116,11 @@ export const listSpacesForUser = async (userId: string) => {
   return result.rows;
 };
 
-export const getSpaceStructure = async (spaceId: string) => {
+export const getSpaceStructure = async (
+  spaceId: string,
+  userId: string,
+  canManage: boolean,
+) => {
   const [spaceResult, categoriesResult, channelsResult] = await Promise.all([
     db.query(
       `SELECT id, name, slug, avatar_url, created_by, created_at
@@ -115,18 +129,29 @@ export const getSpaceStructure = async (spaceId: string) => {
       [spaceId],
     ),
     db.query(
-      `SELECT id, name, position
-       FROM categories
-       WHERE space_id = $1 AND deleted_at IS NULL
+      `SELECT c.id, c.name, c.position
+       FROM categories c
+       WHERE c.space_id = $1 AND c.deleted_at IS NULL
+       AND ($2::boolean OR EXISTS (
+         SELECT 1 FROM conversations ch
+         JOIN conversation_members cm ON cm.conversation_id = ch.id
+         WHERE ch.category_id = c.id AND ch.deleted_at IS NULL
+           AND cm.user_id = $3 AND cm.left_at IS NULL
+       ))
        ORDER BY position ASC`,
-      [spaceId],
+      [spaceId, canManage, userId],
     ),
     db.query(
       `SELECT id, name, type, position, category_id
        FROM conversations
        WHERE space_id = $1 AND type = 'channel' AND deleted_at IS NULL
+       AND ($2::boolean OR EXISTS (
+         SELECT 1 FROM conversation_members cm
+         WHERE cm.conversation_id = conversations.id
+           AND cm.user_id = $3 AND cm.left_at IS NULL
+       ))
        ORDER BY position ASC`,
-      [spaceId],
+      [spaceId, canManage, userId],
     ),
   ]);
 

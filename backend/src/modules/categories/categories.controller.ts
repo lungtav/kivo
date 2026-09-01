@@ -34,3 +34,10 @@ export const createCategory = asyncHandler(
       .json({ message: "category created successfully", category });
   },
 );
+
+export const deleteCategory = asyncHandler(
+  async (req: Request<{ categoryId: string }>, res: Response) => {
+    await categoriesService.deleteCategory(req.params.categoryId, req.user.id);
+    res.status(204).send();
+  },
+);

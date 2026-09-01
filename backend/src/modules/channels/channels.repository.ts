@@ -39,6 +39,29 @@ export const addChannelMember = async (channelId: string, userId: string) => {
   );
 };
 
+export const addSpaceAdminsToChannel = async (channelId: string, spaceId: string) => {
+  await db.query(
+    `INSERT INTO conversation_members (conversation_id, user_id, role)
+     SELECT $1, sm.user_id, 'member'
+     FROM space_members sm
+     WHERE sm.space_id = $2
+       AND sm.left_at IS NULL
+       AND sm.role IN ('owner', 'admin')
+     ON CONFLICT (conversation_id, user_id) DO UPDATE SET left_at = NULL`,
+    [channelId, spaceId],
+  );
+};
+
+export const deleteChannel = async (channelId: string) => {
+  const result = await db.query(
+    `UPDATE conversations SET deleted_at = NOW()
+     WHERE id = $1 AND type = 'channel' AND deleted_at IS NULL
+     RETURNING id`,
+    [channelId],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const findChannelById = async (id: string) => {
   const result = await db.query(
     `SELECT id, type, space_id, category_id, name, created_by, position, created_at

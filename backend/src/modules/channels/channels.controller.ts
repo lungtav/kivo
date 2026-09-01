@@ -1,6 +1,7 @@
 import { asyncHandler } from "../../middleware/async-handler.js";
 import type { Request, Response } from "express";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError.js";
+import { ValidationError } from "../../shared/errors/ValidationError.js";
 import type { CreateChannelInput } from "./channels.types.js";
 import { CreateChannelSchema } from "./channels.schema.js";
 import * as channelsService from "./channels.service.js";
@@ -18,10 +19,15 @@ export const createChannel = asyncHandler(
 
     const parsed = CreateChannelSchema.safeParse(req.body);
 
+    if (!parsed.success) {
+      const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+      throw new ValidationError(message);
+    }
+
     const channel = await channelsService.createChannel(
       req.params.spaceId,
       userId,
-      req.body,
+      parsed.data,
     );
     res.status(201).json({ message: "Channel created successfully", channel });
   },
@@ -40,5 +46,12 @@ export const joinChannel = asyncHandler(
       userId,
     );
     res.status(200).json({ message: "channel joined successfully", channel });
+  },
+);
+
+export const deleteChannel = asyncHandler(
+  async (req: Request<{ channelId: string }>, res: Response) => {
+    await channelsService.deleteChannel(req.params.channelId, req.user.id);
+    res.status(204).send();
   },
 );

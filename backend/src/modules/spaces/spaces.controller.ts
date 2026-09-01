@@ -15,8 +15,8 @@ export const createSpace = asyncHandler(
       throw new UnauthorizedError("unauthorized access");
     }
 
-    const space = await spacesService.createSpace(userId, name);
-    res.status(201).json({ message: "space created successfully", space });
+    const result = await spacesService.createSpace(userId, name);
+    res.status(201).json({ message: "space created successfully", space: result.space });
   },
 );
 
@@ -72,5 +72,12 @@ export const getSpace = asyncHandler(
 
     const space = await spacesService.getSpace(req.params.spaceId, req.user.id);
     res.status(200).json({ message: "Space fetched successfully", space });
+  },
+);
+
+export const deleteSpace = asyncHandler(
+  async (req: Request<{ spaceId: string }>, res: Response) => {
+    await spacesService.deleteSpace(req.params.spaceId, req.user.id);
+    res.status(204).send();
   },
 );

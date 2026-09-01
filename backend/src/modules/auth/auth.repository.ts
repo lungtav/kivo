@@ -20,8 +20,7 @@ export const findUserByEmail = async (email: string) => {
   const userResult = await db.query(
     `
     SELECT id, email, username, display_name,email_verified_at, password_hash FROM users
-    WHERE deleted_at IS NULL
-    AND email=$1
+    WHERE email=$1
     LIMIT 1
     `,
     [email],

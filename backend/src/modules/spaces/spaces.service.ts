@@ -71,10 +71,23 @@ export const getSpace = async (spaceId: string, userId: string) => {
     throw new NotFoundError("space not found");
   }
 
-  const space = await spacesRepository.getSpaceStructure(spaceId);
+  const space = await spacesRepository.getSpaceStructure(
+    spaceId,
+    userId,
+    membership.role === "owner" || membership.role === "admin",
+  );
   if (!space) {
     throw new NotFoundError("space not found");
   }
 
   return { ...space, role: membership.role };
+};
+
+export const deleteSpace = async (spaceId: string, userId: string) => {
+  const membership = await spacesRepository.getMembership(spaceId, userId);
+  if (!membership) throw new NotFoundError("space not found");
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can delete this space");
+  }
+  await spacesRepository.deleteSpace(spaceId);
 };

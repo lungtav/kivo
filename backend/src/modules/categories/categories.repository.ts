@@ -34,3 +34,28 @@ export const findCategoryById = async (id: string) => {
   return result.rows[0] ?? null;
 };
 
+export const deleteCategory = async (categoryId: string) => {
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `UPDATE conversations SET category_id = NULL
+       WHERE category_id = $1 AND deleted_at IS NULL`,
+      [categoryId],
+    );
+    const result = await client.query(
+      `UPDATE categories SET deleted_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id`,
+      [categoryId],
+    );
+    await client.query("COMMIT");
+    return result.rows[0] ?? null;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+

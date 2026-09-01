@@ -9,7 +9,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "../../shared/utils/tokens.js";
-import { emailQueue } from "../../infrastructure/queue/queues/email-queue.js";
+import { emailQueue } from "../../infrastructure/queue/queue.js";
 import { env } from "../../config/env.js";
 import { ValidationError } from "../../shared/errors/ValidationError.js";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError.js";

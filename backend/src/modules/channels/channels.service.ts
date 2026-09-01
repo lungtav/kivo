@@ -42,8 +42,8 @@ export const createChannel = async (
     nextPosition,
   );
 
-  // creator auto-joins their own channel
-  await channelsRepository.addChannelMember(channel.id, userId);
+  // All owners and admins can access every channel. Other space members must join explicitly.
+  await channelsRepository.addSpaceAdminsToChannel(channel.id, spaceId);
 
   return channel;
 };
@@ -61,4 +61,17 @@ export const joinChannel = async (channelId: string, userId: string) => {
 
   await channelsRepository.addChannelMember(channelId, userId);
   return channel;
+};
+
+export const deleteChannel = async (channelId: string, userId: string) => {
+  const channel = await channelsRepository.findChannelById(channelId);
+  if (!channel) throw new NotFoundError("channel not found");
+
+  const membership = await spacesRepository.getMembership(channel.space_id, userId);
+  if (!membership) throw new NotFoundError("channel not found");
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can delete channels");
+  }
+
+  await channelsRepository.deleteChannel(channelId);
 };
