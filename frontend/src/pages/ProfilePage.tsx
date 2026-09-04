@@ -40,10 +40,7 @@ export default function ProfilePage() {
         </div>
       </div>
       {isSelf && <p className="mt-3 text-xs text-stone-600">{profile.user.email}</p>}
-      <div className="mt-6 rounded-2xl border border-white/[.08] bg-[#1b1b20] p-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-stone-500">Bio</p>
-        {profile.user.bio ? <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-300">{profile.user.bio}</p> : <p className="mt-2 text-sm italic text-stone-600">{isSelf ? "You haven't written a bio yet — add one in settings." : "This member hasn't written a bio yet."}</p>}
-      </div>
+      {profile.user.bio && <p className="mt-6 whitespace-pre-wrap text-sm leading-6 text-stone-300">{profile.user.bio}</p>}
       {profile.directConversationId && <button onClick={() => openConversation(profile.directConversationId!)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-stone-200 px-4 py-3 text-sm font-semibold text-stone-900 transition hover:bg-white"><MessageCircle size={16} /> Message {profile.user.display_name}</button>}
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-stone-500"><Hash size={13} /> Spaces in common <span className="text-stone-700">({profile.commonSpaces.length})</span></h2>
