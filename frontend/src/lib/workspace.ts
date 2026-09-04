@@ -27,6 +27,14 @@ export type SpaceStructure = Space & {
   uncategorized_channels: Channel[];
 };
 
+export type MessageReply = {
+  id: string;
+  author: string | null;
+  content: string | null;
+  type: string;
+  isDeleted: boolean;
+};
+
 export type MessageAttachment = {
   id: string;
   mediaType: string;
@@ -43,6 +51,7 @@ export type ApiMessage = {
   sender_id: string;
   sender_display_name: string | null;
   sender_username: string | null;
+  reply_to?: MessageReply | null;
   attachments?: MessageAttachment[];
 };
 
@@ -98,7 +107,7 @@ export const getMessages = (conversationId: string, params?: { before?: string; 
   const query = search.toString();
   return apiRequest<{ messages: ApiMessage[]; nextCursor: string | null }>(`/api/messages/${conversationId}${query ? `?${query}` : ""}`);
 };
-export const sendMessage = (conversationId: string, content: string, attachments?: { storageKey: string; mimeType: string; fileSizeBytes: number }[]) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content, ...(attachments?.length ? { attachments } : {}) }) });
+export const sendMessage = (conversationId: string, content: string, options?: { attachments?: { storageKey: string; mimeType: string; fileSizeBytes: number }[]; replyToId?: string }) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content, ...(options?.attachments?.length ? { attachments: options.attachments } : {}), ...(options?.replyToId ? { replyToId: options.replyToId } : {}) }) });
 export const requestUploadUrl = (mimeType: string) => apiRequest<{ uploadUrl: string; storageKey: string }>("/api/attachments/upload-url", { method: "POST", body: JSON.stringify({ mimeType }) });
 export const uploadToStorage = async (uploadUrl: string, file: File) => {
   const response = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });

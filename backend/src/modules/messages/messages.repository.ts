@@ -74,9 +74,18 @@ export const findMessageById = async (id: string) => {
 export const getHydratedMessage = async (id: string) => {
   const result = await db.query(
     `SELECT m.id, m.conversation_id, m.sender_id, m.type, m.content, m.reply_to_id, m.created_at, m.edited_at, m.deleted_at,
-            u.display_name AS sender_display_name, u.username AS sender_username
+            u.display_name AS sender_display_name, u.username AS sender_username,
+            CASE WHEN r.id IS NULL THEN NULL ELSE json_build_object(
+              'id', r.id,
+              'author', COALESCE(ru.display_name, ru.username),
+              'content', r.content,
+              'type', r.type,
+              'isDeleted', r.deleted_at IS NOT NULL
+            ) END AS reply_to
      FROM messages m
      JOIN users u ON u.id = m.sender_id
+     LEFT JOIN messages r ON r.id = m.reply_to_id
+     LEFT JOIN users ru ON ru.id = r.sender_id
      WHERE m.id = $1`,
     [id],
   );
@@ -179,6 +188,14 @@ export const getMessages = async (
         u.display_name AS sender_display_name,
         u.username AS sender_username,
 
+        CASE WHEN r.id IS NULL THEN NULL ELSE json_build_object(
+          'id', r.id,
+          'author', COALESCE(ru.display_name, ru.username),
+          'content', r.content,
+          'type', r.type,
+          'isDeleted', r.deleted_at IS NOT NULL
+        ) END AS reply_to,
+
         COALESCE(
           json_agg(
             json_build_object(
@@ -200,11 +217,17 @@ export const getMessages = async (
       LEFT JOIN message_attachments a
         ON a.message_id = m.id
 
+      LEFT JOIN messages r
+        ON r.id = m.reply_to_id
+
+      LEFT JOIN users ru
+        ON ru.id = r.sender_id
+
       WHERE m.conversation_id = $1
         AND m.deleted_at IS NULL
         ${cursorCondition}
 
-      GROUP BY m.id, u.display_name, u.username
+      GROUP BY m.id, u.display_name, u.username, r.id, ru.id
 
       ORDER BY m.created_at DESC
 
