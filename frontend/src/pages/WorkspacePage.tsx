@@ -3,7 +3,7 @@ import { AtSign, Bell, Hash, Pin, Search, Users } from "lucide-react";
 import { MessageComposer } from "../components/app/MessageComposer";
 import { MessageItem, type Message } from "../components/app/MessageItem";
 import { WorkspaceShell, type SelectedConversation } from "../components/app/WorkspaceShell";
-import { getMessages, joinChannel, sendMessage, editMessage, deleteMessage, markConversationRead, type ApiMessage } from "../lib/workspace";
+import { getMessages, joinChannel, sendMessage, requestUploadUrl, uploadToStorage, editMessage, deleteMessage, markConversationRead, type ApiMessage } from "../lib/workspace";
 import { ApiError } from "../lib/api";
 import { connectRealtime, getRealtimeSocket } from "../lib/realtime";
 
@@ -30,6 +30,7 @@ const toMessage = (message: ApiMessage): Message => {
     accent: "violet",
     isOwn: message.sender_id === currentUserId(),
     edited: !!message.edited_at,
+    attachments: message.attachments?.map(({ id, mediaType, mimeType }) => ({ id, mediaType, mimeType })),
   };
 };
 
@@ -154,21 +155,31 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations }: { vie
     return () => { socket.off("connect", onConnect); socket.off("message:new", onMessage); socket.off("message:update", onMessageUpdate); socket.off("message:delete", onMessageDelete); socket.off("typing:update", onTyping); socket.emit("conversation:leave", { conversationId }); setTypingUsers({}); };
   }, [selectedChannel?.id]);
 
-  const addMessage = async (body: string) => {
+  const addMessage = async (body: string, files: File[] = []) => {
     if (!selectedChannel) return;
     const conversationId = selectedChannel.id;
     const socket = getRealtimeSocket();
-    if (socket?.connected) {
-      await new Promise<void>((resolve, reject) => socket.emit("message:send", { conversationId, content: body }, (result: { status: "ok"; message?: ApiMessage } | { status: "error"; message?: string }) => {
+    let message: ApiMessage | undefined;
+    if (files.length > 0) {
+      // attachments can only go through REST — get a presigned URL per file, upload, then send
+      const attachments = [];
+      for (const file of files) {
+        const { uploadUrl, storageKey } = await requestUploadUrl(file.type);
+        await uploadToStorage(uploadUrl, file);
+        attachments.push({ storageKey, mimeType: file.type, fileSizeBytes: file.size });
+      }
+      ({ messageSent: message } = await sendMessage(conversationId, body, attachments));
+    } else if (socket?.connected) {
+      message = await new Promise<ApiMessage>((resolve, reject) => socket.emit("message:send", { conversationId, content: body }, (result: { status: "ok"; message?: ApiMessage } | { status: "error"; message?: string }) => {
         if (result.status === "ok") {
-          if (result.message) appendMessage(result.message);
-          resolve();
+          if (result.message) resolve(result.message);
+          else reject(new Error("Message could not be sent."));
         } else reject(new Error(result.message ?? "Message could not be sent."));
       }));
     } else {
-      const { messageSent } = await sendMessage(conversationId, body);
-      appendMessage(messageSent);
+      ({ messageSent: message } = await sendMessage(conversationId, body));
     }
+    if (message) appendMessage(message);
   };
 
   const handleEdit = async (messageId: string, body: string) => {
@@ -192,7 +203,7 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations }: { vie
   }, [selectedChannel?.id]);
 
   const typers = Object.values(typingUsers);
-  return <div className="flex min-h-0 flex-1 overflow-hidden bg-[#17171b] text-stone-100"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-white/[.06] bg-[#1b1b20] px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3">{selectedChannel?.kind === "direct" ? <AtSign size={19} className="text-stone-400" /> : <Hash size={19} className="text-stone-400" />}<div><h1 className="truncate text-sm font-semibold text-stone-100">{selectedChannel?.name ?? (view === "home" ? "Select a conversation" : "Select a channel")}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-300/80" : "text-stone-500"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-stone-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain bg-[#17171b] px-5 py-6 [scrollbar-width:thin] [scrollbar-color:#444_#17171b]"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-stone-400 hover:bg-white/[.06] hover:text-stone-200 disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}<div className="mb-6 flex items-center gap-3"><div className="h-px flex-1 bg-white/[.07]" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">Today</span><div className="h-px flex-1 bg-white/[.07]" /></div>{loadingMessages && <p className="text-sm text-stone-500">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-300">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-stone-500">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message) => <MessageItem key={message.id} message={message} onEdit={handleEdit} onDelete={handleDelete} />)}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} ownTyping={isTyping} /><MessageComposer channel={selectedChannel.name} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
+  return <div className="flex min-h-0 flex-1 overflow-hidden bg-[#17171b] text-stone-100"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-white/[.06] bg-[#1b1b20] px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3">{selectedChannel?.kind === "direct" ? <AtSign size={19} className="text-stone-400" /> : <Hash size={19} className="text-stone-400" />}<div><h1 className="truncate text-sm font-semibold text-stone-100">{selectedChannel?.name ?? (view === "home" ? "Select a conversation" : "Select a channel")}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-300/80" : "text-stone-500"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-stone-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain bg-[#17171b] px-5 py-6 [scrollbar-width:thin] [scrollbar-color:#444_#17171b]"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-stone-400 hover:bg-white/[.06] hover:text-stone-200 disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}<div className="mb-6 flex items-center gap-3"><div className="h-px flex-1 bg-white/[.07]" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">Today</span><div className="h-px flex-1 bg-white/[.07]" /></div>{loadingMessages && <p className="text-sm text-stone-500">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-300">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-stone-500">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message) => <MessageItem key={message.id} message={message} onEdit={handleEdit} onDelete={handleDelete} />)}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} ownTyping={isTyping} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
 }
 
 function TypingIndicator({ users, ownTyping }: { users: TypingUser[]; ownTyping: boolean }) { if (!users.length && !ownTyping) return <div className="h-7" />; const names = users.map((user) => user.displayName).join(", "); return <div className="mx-auto flex h-7 w-full max-w-4xl items-center gap-2 px-5 text-xs text-stone-400"><div className="flex -space-x-2">{users.slice(0, 3).map((user) => user.avatarUrl ? <img key={user.userId} src={user.avatarUrl} alt="" className="size-5 rounded-full border-2 border-[#1b1b20] object-cover" /> : <span key={user.userId} className="grid size-5 place-items-center rounded-full border-2 border-[#1b1b20] bg-violet-400 text-[8px] font-bold text-violet-950">{user.displayName.slice(0, 1).toUpperCase()}</span>)}</div><span>{users.length ? `${names}${users.length > 3 ? ` and ${users.length - 3} more` : ""} ${users.length === 1 ? "is" : "are"} typing…` : "You are typing…"}</span></div>; }

@@ -27,6 +27,13 @@ export type SpaceStructure = Space & {
   uncategorized_channels: Channel[];
 };
 
+export type MessageAttachment = {
+  id: string;
+  mediaType: string;
+  mimeType: string;
+  fileSizeBytes: number | null;
+};
+
 export type ApiMessage = {
   id: string;
   conversation_id: string;
@@ -36,6 +43,7 @@ export type ApiMessage = {
   sender_id: string;
   sender_display_name: string | null;
   sender_username: string | null;
+  attachments?: MessageAttachment[];
 };
 
 export type SpaceMember = {
@@ -90,7 +98,13 @@ export const getMessages = (conversationId: string, params?: { before?: string; 
   const query = search.toString();
   return apiRequest<{ messages: ApiMessage[]; nextCursor: string | null }>(`/api/messages/${conversationId}${query ? `?${query}` : ""}`);
 };
-export const sendMessage = (conversationId: string, content: string) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content }) });
+export const sendMessage = (conversationId: string, content: string, attachments?: { storageKey: string; mimeType: string; fileSizeBytes: number }[]) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content, ...(attachments?.length ? { attachments } : {}) }) });
+export const requestUploadUrl = (mimeType: string) => apiRequest<{ uploadUrl: string; storageKey: string }>("/api/attachments/upload-url", { method: "POST", body: JSON.stringify({ mimeType }) });
+export const uploadToStorage = async (uploadUrl: string, file: File) => {
+  const response = await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  if (!response.ok) throw new Error("The file could not be uploaded. Try again.");
+};
+export const getAttachmentReadUrl = (attachmentId: string) => apiRequest<{ readUrl: string }>(`/api/attachments/${attachmentId}/url`);
 export const editMessage = (messageId: string, content: string) => apiRequest<{ messageUpdated: ApiMessage }>(`/api/messages/${messageId}`, { method: "PATCH", body: JSON.stringify({ content }) });
 export const deleteMessage = (messageId: string) => apiRequest<void>(`/api/messages/${messageId}`, { method: "DELETE" });
 export const markConversationRead = (conversationId: string) => apiRequest<void>(`/api/messages/${conversationId}/read`, { method: "POST" });

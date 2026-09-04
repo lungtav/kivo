@@ -11,7 +11,7 @@ export const createAttachment = async (
   const result = await client.query(
     `INSERT INTO message_attachments (message_id, media_type, storage_key, mime_type, file_size_bytes)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, message_id, media_type, storage_key, thumbnail_url, processing_status, mime_type, width, height, duration_seconds`,
+     RETURNING id, message_id, media_type, storage_key, mime_type, file_size_bytes, thumbnail_url, processing_status, width, height, duration_seconds`,
     [messageId, mediaType, storageKey, mimeType, fileSizeBytes],
   );
   return result.rows[0];

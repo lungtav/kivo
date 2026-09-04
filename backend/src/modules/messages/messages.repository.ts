@@ -41,7 +41,18 @@ export const createMessageWithAttachments = async (
     }
 
     await client.query("COMMIT");
-    return { ...message, attachments: attachmentRows };
+
+    // hydrate so clients get sender names and camelCase attachments, matching list responses
+    const hydrated = await getHydratedMessage(message.id);
+    return {
+      ...(hydrated ?? message),
+      attachments: attachmentRows.map((row) => ({
+        id: row.id,
+        mediaType: row.media_type,
+        mimeType: row.mime_type,
+        fileSizeBytes: row.file_size_bytes,
+      })),
+    };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
