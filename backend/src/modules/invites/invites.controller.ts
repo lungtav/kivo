@@ -43,3 +43,29 @@ export const joinSpace = asyncHandler(
     res.status(200).json({ message: "space joined", result });
   },
 );
+
+export const listInvites = asyncHandler(
+  async (req: Request<{ spaceId: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const invites = await invitesService.listInvites(req.params.spaceId, userId);
+    res.status(200).json({ invites });
+  },
+);
+
+export const revokeInvite = asyncHandler(
+  async (req: Request<{ inviteId: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    await invitesService.revokeInvite(req.params.inviteId, userId);
+    res.status(204).send();
+  },
+);

@@ -16,6 +16,35 @@ export const createInvite = async (
   return result.rows[0];
 };
 
+export const listInvitesForSpace = async (spaceId: string) => {
+  const result = await db.query(
+    `SELECT id, space_id, code, max_uses, uses_count, expires_at, revoked_at, created_at
+     FROM space_invites
+     WHERE space_id = $1 AND revoked_at IS NULL
+     ORDER BY created_at DESC`,
+    [spaceId],
+  );
+  return result.rows;
+};
+
+export const findInviteById = async (inviteId: string) => {
+  const result = await db.query(
+    `SELECT id, space_id, code, revoked_at FROM space_invites WHERE id = $1`,
+    [inviteId],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const revokeInvite = async (inviteId: string) => {
+  const result = await db.query(
+    `UPDATE space_invites SET revoked_at = NOW()
+     WHERE id = $1 AND revoked_at IS NULL
+     RETURNING id`,
+    [inviteId],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const redeemInvite = async (code: string, userId: string) => {
   const client = await db.connect();
   try {

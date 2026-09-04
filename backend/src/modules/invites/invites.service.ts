@@ -34,6 +34,35 @@ export const createInvite = async (
   );
 };
 
+export const listInvites = async (spaceId: string, userId: string) => {
+  const membership = await spacesRepository.getMembership(spaceId, userId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can view invites");
+  }
+  return invitesRepository.listInvitesForSpace(spaceId);
+};
+
+export const revokeInvite = async (inviteId: string, userId: string) => {
+  const invite = await invitesRepository.findInviteById(inviteId);
+  if (!invite) {
+    throw new NotFoundError("invite not found");
+  }
+  const membership = await spacesRepository.getMembership(invite.space_id, userId);
+  if (!membership) {
+    throw new NotFoundError("invite not found");
+  }
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can revoke invites");
+  }
+  const revoked = await invitesRepository.revokeInvite(inviteId);
+  if (!revoked) {
+    throw new NotFoundError("invite not found");
+  }
+};
+
 export const joinSpace = async (code: string, userId: string) => {
   const result = await invitesRepository.redeemInvite(code, userId);
 

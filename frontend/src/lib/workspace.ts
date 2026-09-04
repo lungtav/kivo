@@ -57,6 +57,17 @@ export type DirectConversation = {
   member_count: number;
 };
 
+export type SpaceInvite = {
+  id: string;
+  space_id: string;
+  code: string;
+  max_uses: number | null;
+  uses_count: number;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+};
+
 export const conversationDisplayName = (conversation: DirectConversation) =>
   conversation.type === "dm"
     ? conversation.peer_display_name ?? conversation.peer_username ?? "Unknown user"
@@ -85,5 +96,9 @@ export const listSpaceMembers = (spaceId: string) => apiRequest<{ members: Space
 export const changeMemberRole = (spaceId: string, userId: string, role: "admin" | "member") => apiRequest<{ member: SpaceMember }>(`/api/spaces/${spaceId}/members/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) });
 export const kickMember = (spaceId: string, userId: string) => apiRequest<void>(`/api/spaces/${spaceId}/members/${userId}`, { method: "DELETE" });
 export const leaveSpace = (spaceId: string) => apiRequest<void>(`/api/spaces/${spaceId}/leave`, { method: "POST" });
+export const createInvite = (spaceId: string) => apiRequest<{ invite: SpaceInvite }>(`/api/spaces/${spaceId}/invites`, { method: "POST", body: JSON.stringify({}) });
+export const listInvites = (spaceId: string) => apiRequest<{ invites: SpaceInvite[] }>(`/api/spaces/${spaceId}/invites`);
+export const revokeInvite = (inviteId: string) => apiRequest<void>(`/api/spaces/invites/${inviteId}`, { method: "DELETE" });
+export const joinSpaceByCode = (code: string) => apiRequest<{ result: { spaceId: string } }>(`/api/spaces/join/${encodeURIComponent(code)}`, { method: "POST" });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });

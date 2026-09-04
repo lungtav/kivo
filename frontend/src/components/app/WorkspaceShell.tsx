@@ -13,6 +13,7 @@ import {
   deleteChannel,
   deleteSpace,
   leaveSpace,
+  joinSpaceByCode,
   type DirectConversation,
   type Space,
   type SpaceStructure,
@@ -156,6 +157,13 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setSelectedSpaceId(updatedSpaces[0]?.id ?? null);
   };
 
+  const joinWithCode = async (code: string) => {
+    const { result } = await joinSpaceByCode(code);
+    const { spaces: updatedSpaces } = await listSpaces();
+    setSpaces(updatedSpaces);
+    setSelectedSpaceId(result.spaceId);
+  };
+
   return (
     <main className="flex h-svh overflow-hidden bg-[#17171b]">
       <WorkspaceSidebar
@@ -178,6 +186,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onDeleteCategory={removeCategory}
         onDeleteSpace={removeSpace}
         onLeaveSpace={leaveCurrentSpace}
+        onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {children({ selectedSpace, selectedChannel })}

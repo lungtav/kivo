@@ -13,6 +13,8 @@ import {
 import {
   createInvite,
   joinSpace,
+  listInvites,
+  revokeInvite,
 } from "../modules/invites/invites.controller.js";
 import { createCategory, deleteCategory } from "../modules/categories/categories.controller.js";
 import { createChannel } from "../modules/channels/channels.controller.js";
@@ -32,6 +34,8 @@ spacesRouter.post("/:spaceId/leave", leaveSpace);
 //invites
 spacesRouter.post("/:spaceId/invites", createInvite);
 spacesRouter.post("/join/:code", joinSpace);
+spacesRouter.get("/:spaceId/invites", listInvites);
+spacesRouter.delete("/invites/:inviteId", revokeInvite);
 
 //categories
 spacesRouter.post("/:spaceId/categories", createCategory);
