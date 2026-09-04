@@ -177,15 +177,27 @@ export const getSpaceStructure = async (
       [spaceId, canManage, userId],
     ),
     db.query(
-      `SELECT id, name, type, position, category_id
-       FROM conversations
-       WHERE space_id = $1 AND type = 'channel' AND deleted_at IS NULL
+      `SELECT c.id, c.name, c.type, c.position, c.category_id,
+        (
+          SELECT COUNT(*)::int FROM messages m
+          WHERE m.conversation_id = c.id
+            AND m.deleted_at IS NULL
+            AND m.sender_id <> $3
+            AND (cm.last_read_message_id IS NULL OR m.created_at > COALESCE(
+              (SELECT marker.created_at FROM messages marker WHERE marker.id = cm.last_read_message_id),
+              to_timestamp(0)
+            ))
+        ) AS unread_count
+       FROM conversations c
+       LEFT JOIN conversation_members cm
+         ON cm.conversation_id = c.id AND cm.user_id = $3 AND cm.left_at IS NULL
+       WHERE c.space_id = $1 AND c.type = 'channel' AND c.deleted_at IS NULL
        AND ($2::boolean OR EXISTS (
-         SELECT 1 FROM conversation_members cm
-         WHERE cm.conversation_id = conversations.id
-           AND cm.user_id = $3 AND cm.left_at IS NULL
+         SELECT 1 FROM conversation_members cm2
+         WHERE cm2.conversation_id = c.id
+           AND cm2.user_id = $3 AND cm2.left_at IS NULL
        ))
-       ORDER BY position ASC`,
+       ORDER BY c.position ASC`,
       [spaceId, canManage, userId],
     ),
   ]);

@@ -12,6 +12,7 @@ export type Channel = {
   name: string;
   category_id: string | null;
   position: number;
+  unread_count: number;
 };
 
 export type ChannelGroup = {

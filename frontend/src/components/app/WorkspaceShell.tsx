@@ -15,6 +15,7 @@ import {
   deleteSpace,
   leaveSpace,
   joinSpaceByCode,
+  type Channel,
   type DirectConversation,
   type Space,
   type SpaceStructure,
@@ -32,6 +33,7 @@ type WorkspaceShellProps = {
     selectedSpace: Space | null;
     selectedChannel: SelectedConversation | null;
     refreshConversations: () => void;
+    onConversationActivity: (conversationId: string, kind: "read" | "new") => void;
   }) => ReactNode;
 };
 
@@ -201,8 +203,22 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
       .catch(() => {});
   };
 
+  // keep channel unread badges live: "new" bumps a non-open channel, "read" clears it
+  const onConversationActivity = (conversationId: string, kind: "read" | "new") => {
+    setSpace((prev) => {
+      if (!prev) return prev;
+      const apply = (channel: Channel) =>
+        channel.id !== conversationId ? channel : { ...channel, unread_count: kind === "read" ? 0 : (channel.unread_count ?? 0) + 1 };
+      return {
+        ...prev,
+        categories: prev.categories.map((group) => ({ ...group, channels: group.channels.map(apply) })),
+        uncategorized_channels: prev.uncategorized_channels.map(apply),
+      };
+    });
+  };
+
   return (
-    <main className="flex h-svh overflow-hidden bg-[#17171b]">
+    <main className="flex h-svh overflow-hidden bg-background">
       <WorkspaceSidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((open) => !open)}
@@ -228,7 +244,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ view, selectedSpace, selectedChannel, refreshConversations })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity })}
       </section>
     </main>
   );

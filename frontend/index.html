@@ -7,6 +7,14 @@
     <title>Kivo — realtime chat for your communities</title>
   </head>
   <body>
+    <script>
+      // apply the saved theme before first paint to avoid a flash
+      try {
+        if (localStorage.getItem("kivo_theme") === "dark") {
+          document.documentElement.classList.add("dark");
+        }
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
