@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { FileDown, Pencil, Reply, Trash2 } from "lucide-react";
 import { getAttachmentReadUrl } from "../../lib/workspace";
 
-export type Message = { id: string; author: string; initials: string; timestamp: string; body: string; accent: "violet" | "cyan" | "amber"; isOwn: boolean; edited?: boolean; attachments?: { id: string; mediaType: string; mimeType: string }[]; replyTo?: { id: string; author: string; body: string } };
+export type Message = { id: string; author: string; initials: string; timestamp: string; body: string; accent: "violet" | "cyan" | "amber"; isOwn: boolean; sentAt: Date; edited?: boolean; attachments?: { id: string; mediaType: string; mimeType: string }[]; replyTo?: { id: string; author: string; body: string } };
 
 function AttachmentView({ attachment }: { attachment: { id: string; mediaType: string; mimeType: string } }) {
   const [readUrl, setReadUrl] = useState<string | null>(null);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AtSign, Bell, Hash, Pin, Search, Users } from "lucide-react";
 import { MessageComposer } from "../components/app/MessageComposer";
 import { MessageItem, type Message } from "../components/app/MessageItem";
@@ -19,17 +19,33 @@ const currentUserId = () => {
   }
 };
 
+const isSameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const dayLabel = (date: Date) => {
+  const now = new Date();
+  if (isSameDay(date, now)) return "Today";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameDay(date, yesterday)) return "Yesterday";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "long" }).format(date);
+};
+
 const toMessage = (message: ApiMessage): Message => {
   const author = message.sender_display_name ?? message.sender_username ?? "Unknown user";
   const replyTo = message.reply_to;
+  const sentAt = new Date(message.created_at);
+  const timestamp = isSameDay(sentAt, new Date())
+    ? new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(sentAt)
+    : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(sentAt);
   return {
     id: message.id,
     author,
     initials: author.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
-    timestamp: new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(message.created_at)),
+    timestamp,
     body: message.content ?? "",
     accent: "violet",
     isOwn: message.sender_id === currentUserId(),
+    sentAt,
     edited: !!message.edited_at,
     attachments: message.attachments?.map(({ id, mediaType, mimeType }) => ({ id, mediaType, mimeType })),
     replyTo: replyTo ? {
@@ -215,7 +231,7 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations }: { vie
   }, [selectedChannel?.id]);
 
   const typers = Object.values(typingUsers);
-  return <div className="flex min-h-0 flex-1 overflow-hidden bg-[#17171b] text-stone-100"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-white/[.06] bg-[#1b1b20] px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3">{selectedChannel?.kind === "direct" ? <AtSign size={19} className="text-stone-400" /> : <Hash size={19} className="text-stone-400" />}<div><h1 className="truncate text-sm font-semibold text-stone-100">{selectedChannel?.name ?? (view === "home" ? "Select a conversation" : "Select a channel")}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-300/80" : "text-stone-500"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-stone-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain bg-[#17171b] px-5 py-6 [scrollbar-width:thin] [scrollbar-color:#444_#17171b]"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-stone-400 hover:bg-white/[.06] hover:text-stone-200 disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}<div className="mb-6 flex items-center gap-3"><div className="h-px flex-1 bg-white/[.07]" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">Today</span><div className="h-px flex-1 bg-white/[.07]" /></div>{loadingMessages && <p className="text-sm text-stone-500">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-300">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-stone-500">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message) => <MessageItem key={message.id} message={message} onEdit={handleEdit} onDelete={handleDelete} onReply={setReplyingTo} />)}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} ownTyping={isTyping} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} replyTo={replyingTo ? { author: replyingTo.author, body: replyingTo.body } : null} onCancelReply={() => setReplyingTo(null)} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
+  return <div className="flex min-h-0 flex-1 overflow-hidden bg-[#17171b] text-stone-100"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-white/[.06] bg-[#1b1b20] px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3">{selectedChannel?.kind === "direct" ? <AtSign size={19} className="text-stone-400" /> : <Hash size={19} className="text-stone-400" />}<div><h1 className="truncate text-sm font-semibold text-stone-100">{selectedChannel?.name ?? (view === "home" ? "Select a conversation" : "Select a channel")}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-300/80" : "text-stone-500"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-stone-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain bg-[#17171b] px-5 py-6 [scrollbar-width:thin] [scrollbar-color:#444_#17171b]"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-stone-400 hover:bg-white/[.06] hover:text-stone-200 disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}{loadingMessages && <p className="text-sm text-stone-500">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-300">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-stone-500">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message, index) => { const previous = messages[index - 1]; return <Fragment key={message.id}>{(!previous || !isSameDay(previous.sentAt, message.sentAt)) && <div className="mb-6 mt-2 flex items-center gap-3"><div className="h-px flex-1 bg-white/[.07]" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">{dayLabel(message.sentAt)}</span><div className="h-px flex-1 bg-white/[.07]" /></div>}<MessageItem message={message} onEdit={handleEdit} onDelete={handleDelete} onReply={setReplyingTo} /></Fragment>; })}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} ownTyping={isTyping} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} replyTo={replyingTo ? { author: replyingTo.author, body: replyingTo.body } : null} onCancelReply={() => setReplyingTo(null)} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
 }
 
 function TypingIndicator({ users, ownTyping }: { users: TypingUser[]; ownTyping: boolean }) { if (!users.length && !ownTyping) return <div className="h-7" />; const names = users.map((user) => user.displayName).join(", "); return <div className="mx-auto flex h-7 w-full max-w-4xl items-center gap-2 px-5 text-xs text-stone-400"><div className="flex -space-x-2">{users.slice(0, 3).map((user) => user.avatarUrl ? <img key={user.userId} src={user.avatarUrl} alt="" className="size-5 rounded-full border-2 border-[#1b1b20] object-cover" /> : <span key={user.userId} className="grid size-5 place-items-center rounded-full border-2 border-[#1b1b20] bg-violet-400 text-[8px] font-bold text-violet-950">{user.displayName.slice(0, 1).toUpperCase()}</span>)}</div><span>{users.length ? `${names}${users.length > 3 ? ` and ${users.length - 3} more` : ""} ${users.length === 1 ? "is" : "are"} typing…` : "You are typing…"}</span></div>; }
