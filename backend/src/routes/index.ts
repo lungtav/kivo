@@ -6,6 +6,7 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 import { channelsRouter } from "./channels.routes.js";
 import { attachmentsRouter } from "./attachments.routes.js";
 import { conversationsRouter } from "./conversations.routes.js";
+import { meRouter } from "./users.routes.js";
 
 const appRouter = Router();
 
@@ -15,5 +16,6 @@ appRouter.use("/channel", authMiddleware, channelsRouter);
 appRouter.use("/messages", authMiddleware, messagesRouter);
 appRouter.use("/attachments", authMiddleware, attachmentsRouter);
 appRouter.use("/conversations", authMiddleware, conversationsRouter);
+appRouter.use("/me", authMiddleware, meRouter);
 
 export { appRouter };

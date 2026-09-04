@@ -102,5 +102,16 @@ export const createInvite = (spaceId: string) => apiRequest<{ invite: SpaceInvit
 export const listInvites = (spaceId: string) => apiRequest<{ invites: SpaceInvite[] }>(`/api/spaces/${spaceId}/invites`);
 export const revokeInvite = (inviteId: string) => apiRequest<void>(`/api/spaces/invites/${inviteId}`, { method: "DELETE" });
 export const joinSpaceByCode = (code: string) => apiRequest<{ result: { spaceId: string } }>(`/api/spaces/join/${encodeURIComponent(code)}`, { method: "POST" });
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  display_name: string;
+  username: string;
+  avatar_url: string | null;
+};
+
+export const getMe = () => apiRequest<{ user: UserProfile }>("/api/me");
+export const updateProfile = (input: { display_name?: string; username?: string; avatar_url?: string }) => apiRequest<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(input) });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });

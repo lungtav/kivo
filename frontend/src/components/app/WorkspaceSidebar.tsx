@@ -8,16 +8,19 @@ import {
   changeMemberRole,
   conversationDisplayName,
   createInvite,
+  getMe,
   kickMember,
   listInvites,
   listSpaceMembers,
   revokeInvite,
+  updateProfile,
   type Channel,
   type DirectConversation,
   type Space,
   type SpaceInvite,
   type SpaceMember,
   type SpaceStructure,
+  type UserProfile,
 } from "../../lib/workspace";
 
 type Props = {
@@ -252,6 +255,37 @@ function MembersPanel({ spaceId, canManage, ownRole, onBack, onLeaveSpace }: { s
 function SettingsPanel({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    void getMe()
+      .then(({ user }) => {
+        setProfile(user);
+        setDisplayName(user.display_name);
+        setUsername(user.username);
+      })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load your profile."));
+  }, []);
+  const saveProfile = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaveState("saving");
+    setError(null);
+    try {
+      const { user } = await updateProfile({ display_name: displayName.trim(), username: username.trim() });
+      setProfile(user);
+      setDisplayName(user.display_name);
+      setUsername(user.username);
+      setSaveState("saved");
+    } catch (cause) {
+      setSaveState("idle");
+      setError(cause instanceof Error ? cause.message : "Could not save your profile.");
+      return;
+    }
+    window.setTimeout(() => setSaveState("idle"), 2_000);
+  };
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -263,5 +297,5 @@ function SettingsPanel({ onBack }: { onBack: () => void }) {
     getRealtimeSocket()?.disconnect();
     navigate("/login");
   };
-  return <div className="flex h-full flex-col"><div className="border-b border-white/[.06] px-5 py-4"><button onClick={onBack} className="text-xs font-semibold text-stone-400 hover:text-white">← Back to space</button><h2 className="mt-2 text-base font-semibold">Settings</h2></div><div className="space-y-3 p-5 text-sm"><p className="text-stone-400">Workspace settings are ready for configuration.</p><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Notifications</p><p className="mt-1 text-xs text-stone-500">Notification preferences will appear here.</p></div><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Session</p><p className="mt-1 text-xs text-stone-500">Log out of Kivo on this device.</p><button onClick={() => void handleLogout()} disabled={loggingOut} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"><LogOut size={14} /> {loggingOut ? "Logging out…" : "Log out"}</button></div></div></div>;
+  return <div className="flex h-full flex-col"><div className="border-b border-white/[.06] px-5 py-4"><button onClick={onBack} className="text-xs font-semibold text-stone-400 hover:text-white">← Back to space</button><h2 className="mt-2 text-base font-semibold">Settings</h2></div><div className="flex-1 space-y-4 overflow-y-auto p-5 text-sm">{error && <p className="text-sm text-red-300">{error}</p>}{profile && <form onSubmit={saveProfile} className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Profile</p><p className="mt-1 text-xs text-stone-500">{profile.email}</p><label className="mt-3 block text-xs font-medium text-stone-400">Display name<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/[.1] bg-[#101014] px-3 py-2 text-sm text-stone-100 outline-none focus:border-stone-400" /></label><label className="mt-3 block text-xs font-medium text-stone-400">Username<input value={username} onChange={(event) => setUsername(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/[.1] bg-[#101014] px-3 py-2 text-sm text-stone-100 outline-none focus:border-stone-400" /></label><button disabled={saveState === "saving" || !displayName.trim() || !username.trim()} className="mt-4 w-full rounded-lg bg-stone-200 px-3 py-2 text-xs font-semibold text-stone-900 hover:bg-white disabled:opacity-50">{saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved ✓" : "Save changes"}</button></form>}<div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Notifications</p><p className="mt-1 text-xs text-stone-500">Notification preferences will appear here.</p></div><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Session</p><p className="mt-1 text-xs text-stone-500">Log out of Kivo on this device.</p><button onClick={() => void handleLogout()} disabled={loggingOut} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"><LogOut size={14} /> {loggingOut ? "Logging out…" : "Log out"}</button></div></div></div>;
 }
