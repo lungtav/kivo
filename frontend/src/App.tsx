@@ -7,6 +7,7 @@ import RegisterPage from "./pages/RegisterPage";
 import CheckEmailPage from "./pages/CheckEmailPage";
 import WorkspacePage from "./pages/WorkspacePage";
 import LoginPage from "./pages/LoginPage";
+import ProfilePage from "./pages/ProfilePage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyAccountPage from "./pages/VerifyAccountPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -52,6 +53,7 @@ function App() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-account" element={<VerifyAccountPage />} />
       <Route path="/app" element={<ProtectedRoute><WorkspacePage /></ProtectedRoute>} />
+      <Route path="/app/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

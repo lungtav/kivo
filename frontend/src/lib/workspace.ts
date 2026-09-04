@@ -140,12 +140,33 @@ export type UserProfile = {
   display_name: string;
   username: string;
   avatar_url: string | null;
+  bio?: string | null;
   created_at?: string;
 };
 
+export type CommonSpace = {
+  id: string;
+  name: string;
+  slug: string;
+  avatar_url: string | null;
+};
+
+export type CommonGroup = {
+  id: string;
+  name: string;
+  member_count: number;
+};
+
+export type ProfilePayload = {
+  user: UserProfile;
+  commonSpaces: CommonSpace[];
+  commonGroups: CommonGroup[];
+  directConversationId: string | null;
+};
+
 export const getMe = () => apiRequest<{ user: UserProfile }>("/api/me");
-export const getProfile = (userId: string) => apiRequest<{ user: UserProfile }>(`/api/users/${userId}`);
-export const updateProfile = (input: { display_name?: string; username?: string; avatar_url?: string }) => apiRequest<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(input) });
+export const getProfile = (userId: string) => apiRequest<ProfilePayload>(`/api/users/${userId}`);
+export const updateProfile = (input: { display_name?: string; username?: string; avatar_url?: string; bio?: string }) => apiRequest<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(input) });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
 export const listPeers = () => apiRequest<{ peers: Peer[] }>("/api/conversations/peers");
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });

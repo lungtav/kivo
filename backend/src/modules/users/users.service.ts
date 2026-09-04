@@ -2,6 +2,7 @@ import type { UpdateProfileInput } from "./users.types.js";
 import { NotFoundError } from "../../shared/errors/NotFoundError.js";
 import { ConflictError } from "../../shared/errors/ConflictError.js";
 import * as usersRepository from "./users.repository.js";
+import { findDirectConversation } from "../conversations/conversations.repository.js";
 
 const PG_UNIQUE_VIOLATION = "23505";
 
@@ -15,7 +16,8 @@ export const getProfile = async (userId: string) => {
 
 export const getPublicProfile = async (requesterId: string, targetUserId: string) => {
   // profiles are visible to yourself and to people who share a space with you
-  if (requesterId !== targetUserId && !(await usersRepository.sharesSpaceWith(requesterId, targetUserId))) {
+  const isSelf = requesterId === targetUserId;
+  if (!isSelf && !(await usersRepository.sharesSpaceWith(requesterId, targetUserId))) {
     throw new NotFoundError("user not found");
   }
 
@@ -23,7 +25,21 @@ export const getPublicProfile = async (requesterId: string, targetUserId: string
   if (!profile) {
     throw new NotFoundError("user not found");
   }
-  return profile;
+
+  const [commonSpaces, commonGroups, direct] = await Promise.all([
+    usersRepository.findCommonSpaces(requesterId, targetUserId),
+    usersRepository.findCommonGroups(requesterId, targetUserId),
+    isSelf ? Promise.resolve(null) : findDirectConversation(requesterId, targetUserId),
+  ]);
+
+  // email only ever goes back to the account owner
+  const { email: _email, ...publicUser } = profile;
+  return {
+    user: isSelf ? profile : publicUser,
+    commonSpaces,
+    commonGroups,
+    directConversationId: direct?.id ?? null,
+  };
 };
 
 export const updateProfile = async (userId: string, input: UpdateProfileInput) => {

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import {
   getSpace,
@@ -35,6 +36,9 @@ type WorkspaceShellProps = {
 };
 
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
+  const location = useLocation();
+  // deep-link handoff from the profile page: open a specific space or conversation once
+  const pendingState = location.state as { spaceId?: string; conversationId?: string } | null;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [view, setView] = useState<"home" | "space">("space");
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -48,12 +52,24 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     void listSpaces()
       .then(({ spaces: userSpaces }) => {
         setSpaces(userSpaces);
-        setSelectedSpaceId(userSpaces[0]?.id ?? null);
+        const preferred = pendingState?.spaceId && userSpaces.some((item) => item.id === pendingState.spaceId)
+          ? pendingState.spaceId
+          : userSpaces[0]?.id ?? null;
+        setSelectedSpaceId(preferred);
+        if (pendingState?.spaceId) setView("space");
       })
       .catch(() => setSpaces([]));
     void listConversations()
-      .then(({ conversations: items }) => setConversations(items))
+      .then(({ conversations: items }) => {
+        setConversations(items);
+        if (pendingState?.conversationId && items.some((item) => item.id === pendingState.conversationId)) {
+          setSelectedDirectId(pendingState.conversationId);
+          setSelectedChannelId(null);
+          setView("home");
+        }
+      })
       .catch(() => setConversations([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -33,8 +33,8 @@ export const getUserProfile = asyncHandler(
       throw new NotFoundError("user not found");
     }
 
-    const user = await usersService.getPublicProfile(userId, req.params.userId);
-    res.status(200).json({ user });
+    const profile = await usersService.getPublicProfile(userId, req.params.userId);
+    res.status(200).json(profile);
   },
 );
 
