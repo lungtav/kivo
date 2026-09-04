@@ -4,10 +4,10 @@ export default function HeroSection() {
   return (
     <section className="relative w-full overflow-hidden bg-white">
       {/* monochrome backdrop: soft glows, a fading grid, faint rings */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55rem_36rem_at_82%_-12%,rgba(0,0,0,0.10),transparent),radial-gradient(46rem_32rem_at_-12%_28%,rgba(0,0,0,0.08),transparent)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(0,0,0,.07)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.07)_1px,transparent_1px)] bg-size-[32px_32px] [mask-image:radial-gradient(75rem_52rem_at_50%_-5%,black,transparent)]" />
-      <div className="pointer-events-none absolute -right-32 top-40 size-96 rounded-full border border-neutral-300" />
-      <div className="pointer-events-none absolute -right-16 top-56 size-96 rounded-full border border-neutral-300/80" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55rem_36rem_at_82%_-12%,rgba(0,0,0,0.16),transparent),radial-gradient(46rem_32rem_at_-12%_28%,rgba(0,0,0,0.13),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(0,0,0,.13)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.13)_1px,transparent_1px)] bg-size-[32px_32px] [mask-image:radial-gradient(80rem_60rem_at_50%_-5%,black,transparent)]" />
+      <div className="pointer-events-none absolute -right-32 top-40 size-96 rounded-full border-2 border-neutral-400" />
+      <div className="pointer-events-none absolute -right-16 top-56 size-96 rounded-full border border-neutral-400" />
       <main className="relative mx-auto max-w-5xl px-6 pt-40 pb-20 text-center">
         <h1 className="mx-auto max-w-2xl text-5xl font-bold tracking-tight text-neutral-950 sm:text-6xl">
           Space for your team, friends and communities
