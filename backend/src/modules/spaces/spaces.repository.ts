@@ -65,7 +65,6 @@ export const updateSpace = async (
   id: string,
   fields: { name?: string; avatar_url?: string; bio?: string },
 ) => {
-  console.log(fields);
   const setClauses: string[] = [];
   const values: unknown[] = [];
   let i = 1;

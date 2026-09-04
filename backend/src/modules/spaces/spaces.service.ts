@@ -18,7 +18,6 @@ function slugify(name: string) {
 
 export const createSpace = async (userId: string, name: string) => {
   const slug = slugify(name);
-  console.log(slug);
 
   try {
     const space = await spacesRepository.createSpace(name, slug, userId);

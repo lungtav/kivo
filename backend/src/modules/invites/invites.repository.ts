@@ -21,7 +21,6 @@ export const redeemInvite = async (code: string, userId: string) => {
   try {
     await client.query("BEGIN");
 
-    console.log(code)
     const inviteResult = await client.query(
       `SELECT * FROM space_invites WHERE code = $1 FOR UPDATE`,
       [code],

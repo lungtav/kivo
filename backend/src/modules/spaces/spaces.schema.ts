@@ -1,4 +1,7 @@
 import * as z from "zod";
+export const CreateSpaceSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+});
 export const UpdateSpaceSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),

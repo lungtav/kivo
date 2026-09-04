@@ -70,6 +70,5 @@ export const findChannelById = async (id: string) => {
     [id],
   );
 
-  console.log(result.rows[0]);
   return result.rows[0] ?? null;
 };

@@ -4,18 +4,24 @@ import * as spacesService from "./spaces.service.js";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError.js";
 import { ValidationError } from "../../shared/errors/ValidationError.js";
 import type { CreateSpaceInput, UpdateSpaceInput } from "./spaces.types.js";
-import { UpdateSpaceSchema } from "./spaces.schema.js";
+import { CreateSpaceSchema, UpdateSpaceSchema } from "./spaces.schema.js";
 
 export const createSpace = asyncHandler(
   async (req: Request<{}, {}, CreateSpaceInput>, res: Response) => {
     const userId = req.user.id;
-    const { name } = req.body;
 
     if (!userId) {
       throw new UnauthorizedError("unauthorized access");
     }
 
-    const result = await spacesService.createSpace(userId, name);
+    const parsed = CreateSpaceSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      const message = parsed.error.issues.map((e) => e.message).join(", ");
+      throw new ValidationError(message);
+    }
+
+    const result = await spacesService.createSpace(userId, parsed.data.name);
     res.status(201).json({ message: "space created successfully", space: result.space });
   },
 );

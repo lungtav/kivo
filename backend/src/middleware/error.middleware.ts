@@ -22,6 +22,6 @@ export function errorMiddleware(
 
   logger.error({ err }, "unhandled error");
   res.status(500).json({
-    error: { code: "INTERNAL_SERVER_ERROR", message: "someting went wrong" },
+    error: { code: "INTERNAL_SERVER_ERROR", message: "something went wrong" },
   });
 }

@@ -44,6 +44,8 @@ export const joinSpace = async (code: string, userId: string) => {
       throw new ConflictError("you're already in this space");
     case "not_found":
       throw new NotFoundError("invite not found");
+    case "revoked":
+      throw new AppError(410, "INVITE_REVOKED", "this invite has been revoked");
     case "expired":
       throw new AppError(410, "INVITE_EXPIRED", "this invite has expired");
     case "exhausted":

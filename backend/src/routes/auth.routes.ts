@@ -14,7 +14,7 @@ const authRouter = Router();
 
 authRouter.post(
   "/register",
-  // rateLimit({ ...rateLimitConfig.register, keyPrefix: "rate-limit:register" }),
+  rateLimit({ ...rateLimitConfig.register, keyPrefix: "rate-limit:register" }),
   register,
 );
 authRouter.post(

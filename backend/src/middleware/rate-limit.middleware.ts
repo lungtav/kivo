@@ -11,7 +11,7 @@ interface RateLimitOption {
 export const rateLimit = (options: RateLimitOption) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const identifier = req.ip ?? "unknown" + req.get("user-agent");
+      const identifier = `${req.ip ?? "unknown"}:${req.get("user-agent") ?? "unknown"}`;
 
       const key = `${options.keyPrefix}:${identifier}`;
       const result = await checkRateLimit(
@@ -23,7 +23,7 @@ export const rateLimit = (options: RateLimitOption) => {
       res.setHeader("X-RateLimit-Remaining", result.remaining);
 
       if (!result.allowed) {
-        res.setHeader("RetryAfter", result.retryAfter);
+        res.setHeader("Retry-After", result.retryAfter);
 
         throw new AppError(
           429,
