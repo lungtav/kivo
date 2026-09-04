@@ -45,6 +45,11 @@ export const createSocketServer = (httpServer: HttpServer) => {
       ack?.({ status: "ok" });
     });
 
+    socket.on("conversation:leave", (payload) => {
+      const conversationId = payload?.conversationId as string | undefined;
+      if (conversationId) socket.leave(`conversation:${conversationId}`);
+    });
+
     socket.on("message:send", async (payload, ack) => {
       try {
         const message = await messagesService.sendMessage(

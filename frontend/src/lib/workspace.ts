@@ -39,7 +39,13 @@ export type ApiMessage = {
 
 export const listSpaces = () => apiRequest<{ spaces: Space[] }>("/api/spaces");
 export const getSpace = (spaceId: string) => apiRequest<{ space: SpaceStructure }>(`/api/spaces/${spaceId}`);
-export const getMessages = (conversationId: string) => apiRequest<{ messages: ApiMessage[] }>(`/api/messages/${conversationId}`);
+export const getMessages = (conversationId: string, params?: { before?: string; limit?: number }) => {
+  const search = new URLSearchParams();
+  if (params?.before) search.set("before", params.before);
+  if (params?.limit) search.set("limit", String(params.limit));
+  const query = search.toString();
+  return apiRequest<{ messages: ApiMessage[]; nextCursor: string | null }>(`/api/messages/${conversationId}${query ? `?${query}` : ""}`);
+};
 export const sendMessage = (conversationId: string, content: string) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content }) });
 export const joinChannel = (channelId: string) => apiRequest<{ message: string }>(`/api/channel/${channelId}/join`, { method: "POST" });
 export const createCategory = (spaceId: string, name: string) => apiRequest<{ category: ChannelGroup }>(`/api/spaces/${spaceId}/categories`, { method: "POST", body: JSON.stringify({ name }) });

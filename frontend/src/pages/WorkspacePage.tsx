@@ -38,7 +38,9 @@ export default function WorkspacePage() {
 
 function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null }) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Record<string, TypingUser>>({});
@@ -65,14 +67,16 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
   useEffect(() => {
       if (!selectedChannel) {
         setMessages([]);
+        setNextCursor(null);
         return;
       }
       let active = true;
       setLoadingMessages(true);
       setMessagesError(null);
       setMessages([]);
+      setNextCursor(null);
       const conversationId = selectedChannel.id;
-      const load = () => getMessages(conversationId).then(({ messages: items }) => { if (active) setMessages(items.map(toMessage)); });
+      const load = () => getMessages(conversationId).then(({ messages: items, nextCursor: cursor }) => { if (active) { setMessages(items.map(toMessage)); setNextCursor(cursor); } });
       void load()
         .catch(async (error: unknown) => {
           // channels are opt-in for regular members — a 404 means we haven't joined yet
@@ -86,13 +90,35 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
       return () => { active = false; };
   }, [selectedChannel?.id]);
 
+  const appendMessage = (message: ApiMessage) => setMessages((current) => current.some((existing) => existing.id === message.id) ? current : [...current, toMessage(message)]);
+
+  const loadOlder = async () => {
+    if (!selectedChannel || !nextCursor || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const { messages: items, nextCursor: cursor } = await getMessages(selectedChannel.id, { before: nextCursor });
+      setMessages((current) => [...items.map(toMessage), ...current]);
+      setNextCursor(cursor);
+    } catch (error: unknown) {
+      setMessagesError(error instanceof Error ? error.message : "Could not load earlier messages.");
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
   useEffect(() => {
     if (!selectedChannel) return;
     const socket = connectRealtime();
     const conversationId = selectedChannel.id;
+    let wasConnected = socket.connected;
     socket.emit("conversation:join", { conversationId });
-    const refreshMessages = () => void getMessages(conversationId).then(({ messages: items }) => setMessages(items.map(toMessage)));
-    const onMessage = (message: ApiMessage) => { if (message.conversation_id === conversationId) refreshMessages(); };
+    const refreshMessages = () => void getMessages(conversationId).then(({ messages: items, nextCursor: cursor }) => { setMessages(items.map(toMessage)); setNextCursor(cursor); });
+    const onConnect = () => {
+      // a reconnect (not the first connect, which the fetch effect covers) may have missed messages
+      if (wasConnected) refreshMessages();
+      wasConnected = true;
+    };
+    const onMessage = (message: ApiMessage) => { if (message.conversation_id === conversationId) appendMessage(message); };
     const onTyping = (payload: { userId: string; conversationId: string; user: { displayName: string; avatarUrl: string | null }; isTyping: boolean }) => {
       if (payload.conversationId !== conversationId || payload.userId === currentUserId()) return;
       if (typingTimeouts.current[payload.userId]) window.clearTimeout(typingTimeouts.current[payload.userId]);
@@ -100,19 +126,27 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
       setTypingUsers((users) => ({ ...users, [payload.userId]: { userId: payload.userId, displayName: payload.user.displayName, avatarUrl: payload.user.avatarUrl } }));
       typingTimeouts.current[payload.userId] = window.setTimeout(() => setTypingUsers((users) => { const { [payload.userId]: _, ...rest } = users; return rest; }), 1_800);
     };
+    socket.on("connect", onConnect);
     socket.on("message:new", onMessage);
     socket.on("typing:update", onTyping);
-    return () => { socket.off("message:new", onMessage); socket.off("typing:update", onTyping); setTypingUsers({}); };
+    return () => { socket.off("connect", onConnect); socket.off("message:new", onMessage); socket.off("typing:update", onTyping); socket.emit("conversation:leave", { conversationId }); setTypingUsers({}); };
   }, [selectedChannel?.id]);
 
   const addMessage = async (body: string) => {
     if (!selectedChannel) return;
+    const conversationId = selectedChannel.id;
     const socket = getRealtimeSocket();
     if (socket?.connected) {
-      await new Promise<void>((resolve, reject) => socket.emit("message:send", { conversationId: selectedChannel.id, content: body }, (result: { status: string; message?: string }) => result.status === "ok" ? resolve() : reject(new Error(result.message ?? "Message could not be sent."))));
-    } else await sendMessage(selectedChannel.id, body);
-    const { messages: items } = await getMessages(selectedChannel.id);
-    setMessages(items.map(toMessage));
+      await new Promise<void>((resolve, reject) => socket.emit("message:send", { conversationId, content: body }, (result: { status: "ok"; message?: ApiMessage } | { status: "error"; message?: string }) => {
+        if (result.status === "ok") {
+          if (result.message) appendMessage(result.message);
+          resolve();
+        } else reject(new Error(result.message ?? "Message could not be sent."));
+      }));
+    } else {
+      const { messageSent } = await sendMessage(conversationId, body);
+      appendMessage(messageSent);
+    }
   };
 
   const handleTyping = useCallback((typing: boolean) => {
@@ -126,7 +160,7 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
   }, [selectedChannel?.id]);
 
   const typers = Object.values(typingUsers);
-  return <div className="flex min-h-0 flex-1 overflow-hidden bg-[#17171b] text-stone-100"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-white/[.06] bg-[#1b1b20] px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3"><Hash size={19} className="text-stone-400" /><div><h1 className="truncate text-sm font-semibold text-stone-100">{selectedChannel?.name ?? "Select a channel"}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-300/80" : "text-stone-500"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-stone-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain bg-[#17171b] px-5 py-6 [scrollbar-width:thin] [scrollbar-color:#444_#17171b]"><div className="mx-auto max-w-4xl"><div className="mb-6 flex items-center gap-3"><div className="h-px flex-1 bg-white/[.07]" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">Today</span><div className="h-px flex-1 bg-white/[.07]" /></div>{loadingMessages && <p className="text-sm text-stone-500">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-300">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-stone-500">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message) => <MessageItem key={message.id} message={message} />)}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} ownTyping={isTyping} /><MessageComposer channel={selectedChannel.name} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
+  return <div className="flex min-h-0 flex-1 overflow-hidden bg-[#17171b] text-stone-100"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-white/[.06] bg-[#1b1b20] px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3"><Hash size={19} className="text-stone-400" /><div><h1 className="truncate text-sm font-semibold text-stone-100">{selectedChannel?.name ?? "Select a channel"}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-300/80" : "text-stone-500"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-400" : "bg-stone-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain bg-[#17171b] px-5 py-6 [scrollbar-width:thin] [scrollbar-color:#444_#17171b]"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-stone-400 hover:bg-white/[.06] hover:text-stone-200 disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}<div className="mb-6 flex items-center gap-3"><div className="h-px flex-1 bg-white/[.07]" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-stone-500">Today</span><div className="h-px flex-1 bg-white/[.07]" /></div>{loadingMessages && <p className="text-sm text-stone-500">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-300">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-stone-500">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message) => <MessageItem key={message.id} message={message} />)}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} ownTyping={isTyping} /><MessageComposer channel={selectedChannel.name} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
 }
 
 function TypingIndicator({ users, ownTyping }: { users: TypingUser[]; ownTyping: boolean }) { if (!users.length && !ownTyping) return <div className="h-7" />; const names = users.map((user) => user.displayName).join(", "); return <div className="mx-auto flex h-7 w-full max-w-4xl items-center gap-2 px-5 text-xs text-stone-400"><div className="flex -space-x-2">{users.slice(0, 3).map((user) => user.avatarUrl ? <img key={user.userId} src={user.avatarUrl} alt="" className="size-5 rounded-full border-2 border-[#1b1b20] object-cover" /> : <span key={user.userId} className="grid size-5 place-items-center rounded-full border-2 border-[#1b1b20] bg-violet-400 text-[8px] font-bold text-violet-950">{user.displayName.slice(0, 1).toUpperCase()}</span>)}</div><span>{users.length ? `${names}${users.length > 3 ? ` and ${users.length - 3} more` : ""} ${users.length === 1 ? "is" : "are"} typing…` : "You are typing…"}</span></div>; }
