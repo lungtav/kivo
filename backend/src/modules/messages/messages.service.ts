@@ -5,6 +5,14 @@ import { mediaQueue } from "../../infrastructure/queue/queue.js";
 import { getSocketServer } from "../../infrastructure/websocket/io.js";
 import * as messagesRepository from "../messages/messages.repository.js";
 
+// the DB media_type enum is image/video/audio/file — derive it, don't trust the client
+const mediaTypeFromMime = (mimeType: string) => {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "file";
+};
+
 export const sendMessage = async (
   conversationId: string,
   userId: string,
@@ -40,7 +48,7 @@ export const sendMessage = async (
     hasContent ? input.content!.trim() : null,
     input.replyToId ?? null,
     (input.attachments ?? []).map((a) => ({
-      mediaType: a.mediaType,
+      mediaType: mediaTypeFromMime(a.mimeType),
       storageKey: a.storageKey,
       mimeType: a.mimeType,
       fileSizeBytes: a.fileSizeBytes ?? null,

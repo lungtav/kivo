@@ -7,9 +7,15 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../../config/env.js";
 import { randomUUID } from "node:crypto";
 
+// B2 endpoints are sometimes configured without a scheme; the SDK needs one
+const endpoint = env.B2_ENDPOINT.startsWith("http")
+  ? env.B2_ENDPOINT
+  : `https://${env.B2_ENDPOINT}`;
+
 const b2 = new S3Client({
   region: env.B2_REGION,
-  endpoint: env.B2_ENDPOINT,
+  endpoint,
+  forcePathStyle: true,
   credentials: {
     accessKeyId: env.B2_KEY_ID,
     secretAccessKey: env.B2_APPLICATION_KEY,

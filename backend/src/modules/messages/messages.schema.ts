@@ -9,9 +9,8 @@ export const CreateMessageSchema = z.object({
   attachments: z
     .array(
       z.object({
-        mediaType: z.enum(["text", "media", "system"]),
-        storageKey: z.string(),
-        mimeType: z.string(),
+        storageKey: z.string().min(1),
+        mimeType: z.string().min(1),
         fileSizeBytes: z.number().positive().optional(),
       }),
     )
