@@ -2,8 +2,13 @@ import { Link } from "react-router-dom";
 
 export default function HeroSection() {
   return (
-    <section className="w-full bg-white">
-      <main className="mx-auto max-w-5xl px-6 pt-40 pb-20 text-center">
+    <section className="relative w-full overflow-hidden bg-white">
+      {/* monochrome backdrop: soft glows, a fading grid, faint rings */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55rem_36rem_at_82%_-12%,rgba(0,0,0,0.055),transparent),radial-gradient(46rem_32rem_at_-12%_28%,rgba(0,0,0,0.045),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(0,0,0,.032)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.032)_1px,transparent_1px)] bg-size-[36px_36px] [mask-image:radial-gradient(62rem_44rem_at_50%_-5%,black,transparent)]" />
+      <div className="pointer-events-none absolute -right-32 top-40 size-96 rounded-full border border-neutral-200" />
+      <div className="pointer-events-none absolute -right-16 top-56 size-96 rounded-full border border-neutral-200/70" />
+      <main className="relative mx-auto max-w-5xl px-6 pt-40 pb-20 text-center">
         <h1 className="mx-auto max-w-2xl text-5xl font-bold tracking-tight text-neutral-950 sm:text-6xl">
           Space for your team, friends and communities
         </h1>
