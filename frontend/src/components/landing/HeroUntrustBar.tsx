@@ -51,22 +51,22 @@ export default function HeroUntrustBar() {
   ];
 
   return (
-    <section className="w-full py-12">
+    <section className="w-full border-y border-slate-100 bg-slate-50/60 py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         {/* Subtle Section Label */}
-        <p className="text-xs font-semibold tracking-widest uppercase mb-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[.2em] text-slate-400 mb-8">
           Untrusted by top teams
         </p>
 
         {/* Logo Grid / Flex Bar */}
-        <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16">
+        <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16 text-slate-300 transition-colors">
           {partners.map((partner) => (
             <div
               key={partner.name}
-              className="flex items-center justify-center cursor-pointer group"
+              className="flex items-center justify-center cursor-pointer transition-colors hover:text-slate-500"
               title={partner.name}
             >
-              <div className=" transition-opacity">
+              <div className="transition-opacity">
                 {partner.svg}
               </div>
             </div>
