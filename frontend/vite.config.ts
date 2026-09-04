@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_TARGET ?? "http://localhost:5000",
           changeOrigin: true,
         },
+        "/socket.io": {
+          target: env.VITE_API_TARGET ?? "http://localhost:5000",
+          changeOrigin: true,
+          ws: true,
+        },
       },
     },
   };
