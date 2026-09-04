@@ -60,6 +60,38 @@ export const findMessageById = async (id: string) => {
   return result.rows[0] ?? null;
 };
 
+export const getHydratedMessage = async (id: string) => {
+  const result = await db.query(
+    `SELECT m.id, m.conversation_id, m.sender_id, m.type, m.content, m.reply_to_id, m.created_at, m.edited_at, m.deleted_at,
+            u.display_name AS sender_display_name, u.username AS sender_username
+     FROM messages m
+     JOIN users u ON u.id = m.sender_id
+     WHERE m.id = $1`,
+    [id],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const editMessage = async (messageId: string, content: string) => {
+  const result = await db.query(
+    `UPDATE messages SET content = $2, edited_at = NOW()
+     WHERE id = $1 AND deleted_at IS NULL
+     RETURNING id`,
+    [messageId, content],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const softDeleteMessage = async (messageId: string) => {
+  const result = await db.query(
+    `UPDATE messages SET deleted_at = NOW()
+     WHERE id = $1 AND deleted_at IS NULL
+     RETURNING id, conversation_id`,
+    [messageId],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const isConversationMember = async (
   conversationId: string,
   userId: string,

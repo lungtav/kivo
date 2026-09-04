@@ -21,3 +21,7 @@ export const GetMessagesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   before: z.string().uuid().optional(),
 });
+
+export const EditMessageSchema = z.object({
+  content: z.string().trim().min(1, "message content cannot be empty"),
+});

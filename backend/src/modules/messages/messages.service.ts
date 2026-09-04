@@ -1,6 +1,7 @@
 import type { CreateMessageInput } from "./messages.types.js";
 import { ValidationError } from "../../shared/errors/ValidationError.js";
 import { NotFoundError } from "../../shared/errors/NotFoundError.js";
+import { ForbiddenError } from "../../shared/errors/ForbiddenError.js";
 import { mediaQueue } from "../../infrastructure/queue/queue.js";
 import { getSocketServer } from "../../infrastructure/websocket/io.js";
 import * as messagesRepository from "../messages/messages.repository.js";
@@ -65,6 +66,58 @@ export const sendMessage = async (
     .emit("message:new", message);
 
   return message;
+};
+
+export const editMessage = async (
+  messageId: string,
+  userId: string,
+  content: string,
+) => {
+  const message = await messagesRepository.findMessageById(messageId);
+  if (!message || message.deleted_at) {
+    throw new NotFoundError("message not found");
+  }
+  if (message.sender_id !== userId) {
+    throw new ForbiddenError("you can only edit your own messages");
+  }
+  const isMember = await messagesRepository.isConversationMember(
+    message.conversation_id,
+    userId,
+  );
+  if (!isMember) {
+    throw new NotFoundError("message not found");
+  }
+
+  await messagesRepository.editMessage(messageId, content);
+  const updated = await messagesRepository.getHydratedMessage(messageId);
+
+  getSocketServer()
+    ?.to(`conversation:${message.conversation_id}`)
+    .emit("message:update", updated);
+
+  return updated;
+};
+
+export const deleteMessage = async (messageId: string, userId: string) => {
+  const message = await messagesRepository.findMessageById(messageId);
+  if (!message || message.deleted_at) {
+    throw new NotFoundError("message not found");
+  }
+  if (message.sender_id !== userId) {
+    throw new ForbiddenError("you can only delete your own messages");
+  }
+
+  const deleted = await messagesRepository.softDeleteMessage(messageId);
+  if (!deleted) {
+    throw new NotFoundError("message not found");
+  }
+
+  getSocketServer()
+    ?.to(`conversation:${message.conversation_id}`)
+    .emit("message:delete", {
+      conversationId: message.conversation_id,
+      messageId,
+    });
 };
 
 export const getMessages = async (
