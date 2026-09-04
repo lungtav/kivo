@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthField } from "./AuthField";
 import { Brand } from "../brand/Brand";
 import { login } from "../../lib/auth";
@@ -9,6 +9,7 @@ const initialForm = { email: "", password: "" };
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,8 @@ export function LoginForm() {
     try {
       const { accessToken } = await login(form);
       localStorage.setItem("kivo_access_token", accessToken);
-      navigate("/app");
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+      navigate(from && from.startsWith("/") ? from : "/app");
     } catch (submissionError) {
       if (submissionError instanceof ApiError && submissionError.code === "EMAIL_UNVERIFIED") {
         sessionStorage.setItem("kivo_pending_verification_email", form.email);

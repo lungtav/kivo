@@ -18,3 +18,5 @@ export const login = (input: Pick<RegisterInput, "email" | "password">) => apiRe
 export const verifyEmail = (token: string) => apiRequest<{ message: string }>(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, { method: "POST" }, 0);
 
 export const resendVerification = (input: { email?: string; token?: string }) => apiRequest<{ message: string }>("/api/auth/resend-verification", { method: "POST", body: JSON.stringify(input) });
+
+export const logout = () => apiRequest<{ message: string }>("/api/auth/logout", { method: "POST" });

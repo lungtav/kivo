@@ -1,6 +1,9 @@
-import { ChevronLeft, ChevronRight, Hash, Plus, Settings, Trash2, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Hash, LogOut, Plus, Settings, Trash2, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import kivoLogo from "../../assets/kivo-logo.jfif";
+import { logout } from "../../lib/auth";
+import { getRealtimeSocket } from "../../lib/realtime";
 import type { Channel, Space, SpaceStructure } from "../../lib/workspace";
 
 type Props = {
@@ -87,4 +90,19 @@ function CreateForm({ creating, name, busy, error, onName, onCancel, onSubmit }:
 }
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) { return <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5" role="dialog" aria-modal="true" aria-label={title} onMouseDown={onClose}><div className="w-full max-w-sm rounded-2xl border border-white/[.12] bg-[#17171b] p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><h3 className="text-base font-semibold">{title}</h3><div className="mt-4">{children}</div></div></div>; }
-function SettingsPanel({ onBack }: { onBack: () => void }) { return <div className="flex h-full flex-col"><div className="border-b border-white/[.06] px-5 py-4"><button onClick={onBack} className="text-xs font-semibold text-stone-400 hover:text-white">← Back to space</button><h2 className="mt-2 text-base font-semibold">Settings</h2></div><div className="space-y-3 p-5 text-sm"><p className="text-stone-400">Workspace settings are ready for configuration.</p><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Notifications</p><p className="mt-1 text-xs text-stone-500">Notification preferences will appear here.</p></div><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Appearance</p><p className="mt-1 text-xs text-stone-500">Theme and display options will appear here.</p></div></div></div>; }
+function SettingsPanel({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // the session is being discarded locally regardless of the server result
+    }
+    localStorage.removeItem("kivo_access_token");
+    getRealtimeSocket()?.disconnect();
+    navigate("/login");
+  };
+  return <div className="flex h-full flex-col"><div className="border-b border-white/[.06] px-5 py-4"><button onClick={onBack} className="text-xs font-semibold text-stone-400 hover:text-white">← Back to space</button><h2 className="mt-2 text-base font-semibold">Settings</h2></div><div className="space-y-3 p-5 text-sm"><p className="text-stone-400">Workspace settings are ready for configuration.</p><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Notifications</p><p className="mt-1 text-xs text-stone-500">Notification preferences will appear here.</p></div><div className="rounded-xl border border-white/[.08] p-4"><p className="font-medium">Session</p><p className="mt-1 text-xs text-stone-500">Log out of Kivo on this device.</p><button onClick={() => void handleLogout()} disabled={loggingOut} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"><LogOut size={14} /> {loggingOut ? "Logging out…" : "Log out"}</button></div></div></div>;
+}

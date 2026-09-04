@@ -36,13 +36,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return authenticated ? children : <Navigate to="/login" replace state={{ from: location }} />;
 }
 
+function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
+  if (hasValidAccessToken()) return <Navigate to="/app" replace />;
+  return children;
+}
+
 function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/signup" element={<RegisterPage />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RedirectIfAuthenticated><RegisterPage /></RedirectIfAuthenticated>} />
+      <Route path="/signup" element={<RedirectIfAuthenticated><RegisterPage /></RedirectIfAuthenticated>} />
+      <Route path="/login" element={<RedirectIfAuthenticated><LoginPage /></RedirectIfAuthenticated>} />
       <Route path="/check-email" element={<CheckEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-account" element={<VerifyAccountPage />} />
