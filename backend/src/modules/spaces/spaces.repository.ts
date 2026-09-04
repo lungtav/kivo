@@ -61,6 +61,18 @@ export const getMembership = async (spaceId: string, userId: string) => {
   return result.rows[0] ?? null;
 };
 
+export const listSpaceMembers = async (spaceId: string) => {
+  const result = await db.query(
+    `SELECT sm.user_id, sm.role, u.display_name, u.username, u.avatar_url
+     FROM space_members sm
+     JOIN users u ON u.id = sm.user_id
+     WHERE sm.space_id = $1 AND sm.left_at IS NULL AND u.deleted_at IS NULL
+     ORDER BY u.display_name ASC`,
+    [spaceId],
+  );
+  return result.rows;
+};
+
 export const updateSpace = async (
   id: string,
   fields: { name?: string; avatar_url?: string; bio?: string },

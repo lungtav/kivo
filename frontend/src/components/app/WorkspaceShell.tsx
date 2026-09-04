@@ -3,21 +3,30 @@ import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import {
   getSpace,
   listSpaces,
+  listConversations,
+  createDirectMessage,
   createCategory,
   createChannel,
   createSpace,
+  conversationDisplayName,
   deleteCategory,
   deleteChannel,
   deleteSpace,
-  type Channel,
+  type DirectConversation,
   type Space,
   type SpaceStructure,
 } from "../../lib/workspace";
 
+export type SelectedConversation = {
+  id: string;
+  name: string;
+  kind: "channel" | "direct";
+};
+
 type WorkspaceShellProps = {
   children: (props: {
     selectedSpace: Space | null;
-    selectedChannel: Channel | null;
+    selectedChannel: SelectedConversation | null;
   }) => ReactNode;
 };
 
@@ -27,6 +36,8 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [space, setSpace] = useState<SpaceStructure | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<DirectConversation[]>([]);
+  const [selectedDirectId, setSelectedDirectId] = useState<string | null>(null);
 
   useEffect(() => {
     void listSpaces()
@@ -35,17 +46,22 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         setSelectedSpaceId(userSpaces[0]?.id ?? null);
       })
       .catch(() => setSpaces([]));
+    void listConversations()
+      .then(({ conversations: items }) => setConversations(items))
+      .catch(() => setConversations([]));
   }, []);
 
   useEffect(() => {
     if (!selectedSpaceId) {
       setSpace(null);
       setSelectedChannelId(null);
+      setSelectedDirectId(null);
       return;
     }
 
     setSpace(null);
     setSelectedChannelId(null);
+    setSelectedDirectId(null);
     void getSpace(selectedSpaceId)
       .then(({ space: selectedSpace }) => {
         setSpace(selectedSpace);
@@ -61,8 +77,24 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const channels = space
     ? [...space.categories.flatMap((group) => group.channels), ...space.uncategorized_channels]
     : [];
-  const selectedChannel = channels.find((channel) => channel.id === selectedChannelId) ?? null;
+  const channel = channels.find((item) => item.id === selectedChannelId) ?? null;
+  const direct = conversations.find((item) => item.id === selectedDirectId) ?? null;
+  const selectedChannel: SelectedConversation | null = direct
+    ? { id: direct.id, name: conversationDisplayName(direct), kind: "direct" }
+    : channel
+      ? { id: channel.id, name: channel.name, kind: "channel" }
+      : null;
   const selectedSpace = spaces.find((item) => item.id === selectedSpaceId) ?? null;
+
+  const selectChannel = (id: string) => {
+    setSelectedDirectId(null);
+    setSelectedChannelId(id);
+  };
+
+  const selectDirect = (id: string) => {
+    setSelectedChannelId(null);
+    setSelectedDirectId(id);
+  };
 
   const addCategory = async (name: string) => {
     if (!selectedSpaceId) return;
@@ -83,6 +115,13 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     const { space: newSpace } = await createSpace(name);
     setSpaces((items) => [newSpace, ...items]);
     setSelectedSpaceId(newSpace.id);
+  };
+
+  const addDirect = async (userId: string) => {
+    const { conversation } = await createDirectMessage(userId);
+    setConversations((items) => [conversation, ...items.filter((item) => item.id !== conversation.id)]);
+    setSelectedDirectId(conversation.id);
+    setSelectedChannelId(null);
   };
 
   const removeChannel = async (channelId: string) => {
@@ -118,7 +157,11 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         selectedSpaceId={selectedSpaceId}
         selectedChannelId={selectedChannelId}
         onSelectSpace={setSelectedSpaceId}
-        onSelectChannel={setSelectedChannelId}
+        onSelectChannel={selectChannel}
+        directMessages={conversations}
+        selectedDirectId={selectedDirectId}
+        onSelectDirect={selectDirect}
+        onCreateDirect={addDirect}
         onCreateCategory={addCategory}
         onCreateChannel={addChannel}
         onCreateSpace={addSpace}

@@ -4,11 +4,21 @@ import { useNavigate } from "react-router-dom";
 import kivoLogo from "../../assets/kivo-logo.jfif";
 import { logout } from "../../lib/auth";
 import { getRealtimeSocket } from "../../lib/realtime";
-import type { Channel, Space, SpaceStructure } from "../../lib/workspace";
+import {
+  conversationDisplayName,
+  listSpaceMembers,
+  type Channel,
+  type DirectConversation,
+  type Space,
+  type SpaceMember,
+  type SpaceStructure,
+} from "../../lib/workspace";
 
 type Props = {
   isOpen: boolean; onToggle: () => void; spaces: Space[]; space: SpaceStructure | null;
   selectedSpaceId: string | null; selectedChannelId: string | null;
+  directMessages: DirectConversation[]; selectedDirectId: string | null;
+  onSelectDirect: (id: string) => void; onCreateDirect: (userId: string) => Promise<void>;
   onSelectSpace: (id: string) => void; onSelectChannel: (id: string) => void;
   onCreateCategory: (name: string) => Promise<void>; onCreateChannel: (name: string, categoryId: string | null) => Promise<void>;
   onCreateSpace: (name: string) => Promise<void>; onDeleteChannel: (id: string) => Promise<void>;
@@ -19,7 +29,7 @@ type Deleting = { kind: "space" | "category" | "channel"; id?: string; name: str
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
 export function WorkspaceSidebar(props: Props) {
-  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel } = props;
+  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, directMessages, selectedDirectId, onSelectDirect } = props;
   const [creating, setCreating] = useState<Creating>(null);
   const [deleting, setDeleting] = useState<Deleting>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -27,9 +37,33 @@ export function WorkspaceSidebar(props: Props) {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [memberPickerOpen, setMemberPickerOpen] = useState(false);
+  const [members, setMembers] = useState<SpaceMember[] | null>(null);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const canManage = space?.role === "owner" || space?.role === "admin";
   useEffect(() => { setDeleteConfirmation(""); setError(null); }, [deleting]);
   const startCreate = (kind: NonNullable<Creating>["kind"], categoryId?: string | null) => { setName(""); setError(null); setCreating({ kind, categoryId }); };
+  const openMemberPicker = () => {
+    setMembers(null);
+    setMembersError(null);
+    setMemberPickerOpen(true);
+    if (!space) return;
+    void listSpaceMembers(space.id)
+      .then(({ members: items }) => setMembers(items))
+      .catch((cause) => setMembersError(cause instanceof Error ? cause.message : "Could not load members."));
+  };
+  const pickMember = async (userId: string) => {
+    setBusy(true);
+    setMembersError(null);
+    try {
+      await props.onCreateDirect(userId);
+      setMemberPickerOpen(false);
+    } catch (cause) {
+      setMembersError(cause instanceof Error ? cause.message : "Could not start the conversation.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const submitCreate = async (event: FormEvent) => {
     event.preventDefault(); if (!creating || !name.trim()) return;
     setBusy(true); setError(null);
@@ -70,12 +104,14 @@ export function WorkspaceSidebar(props: Props) {
             <ChannelGroup name="Uncategorised" channels={space?.uncategorized_channels ?? []} selected={selectedChannelId} canManage={canManage} onSelect={onSelectChannel} onCreate={() => startCreate("channel")} onDelete={(channel) => setDeleting({ kind: "channel", id: channel.id, name: channel.name })} />
             {space?.categories.map((category) => <ChannelGroup key={category.id} name={category.name} channels={category.channels} selected={selectedChannelId} canManage={canManage} onSelect={onSelectChannel} onCreate={() => startCreate("channel", category.id)} onDelete={(channel) => setDeleting({ kind: "channel", id: channel.id, name: channel.name })} onDeleteCategory={() => setDeleting({ kind: "category", id: category.id, name: category.name })} />)}
             {canManage && <button onClick={() => startCreate("category")} className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-stone-500 transition hover:bg-white/[.05] hover:text-stone-200"><Plus size={15} /> Add category</button>}
+            <section className="mt-5 mb-2"><div className="mb-1 flex items-center justify-between px-2"><span className="truncate text-[10px] font-bold uppercase tracking-[.16em] text-stone-600">Direct messages</span><button onClick={openMemberPicker} className="rounded p-1 text-stone-600 hover:bg-white/[.06] hover:text-stone-100" aria-label="Start a direct message"><Plus size={14} /></button></div>{directMessages.map((dm) => <div key={dm.id} className={`flex items-center rounded-lg ${selectedDirectId === dm.id ? "bg-stone-200 text-stone-900" : "text-stone-500 hover:bg-white/[.07] hover:text-stone-200"}`}><button onClick={() => onSelectDirect(dm.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"><span className={`grid size-5 shrink-0 place-items-center rounded-full text-[8px] font-bold ${selectedDirectId === dm.id ? "bg-violet-500 text-white" : "bg-violet-400 text-violet-950"}`}>{initials(conversationDisplayName(dm))}</span><span className="truncate">{conversationDisplayName(dm)}</span></button></div>)}</section>
           </div>
         </>}
       </div>
     </div>
     {creating?.kind === "space" && <Modal title="Create a space" onClose={() => setCreating(null)}><CreateForm creating={creating} name={name} busy={busy} error={error} onName={setName} onCancel={() => setCreating(null)} onSubmit={submitCreate} /></Modal>}
     {deleting && <Modal title={`Delete ${deleting.kind}`} onClose={() => setDeleting(null)}><p className="text-sm leading-6 text-stone-400">This deletes <strong className="text-stone-100">{deleting.name}</strong>. This action cannot be undone.</p><label className="mt-4 block text-xs font-medium text-stone-400">Type <strong className="text-stone-200">{deleting.name}</strong> to confirm<input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} className="mt-2 w-full rounded-lg border border-white/[.12] bg-[#101014] px-3 py-2 text-sm text-stone-100 outline-none focus:border-red-300" /></label>{error && <p className="mt-3 text-sm text-red-300">{error}</p>}<div className="mt-6 flex justify-end gap-2"><button onClick={() => setDeleting(null)} className="rounded-lg px-3 py-2 text-sm text-stone-300 hover:bg-white/[.06]">Cancel</button><button disabled={busy || deleteConfirmation !== deleting.name} onClick={() => void confirmDelete()} className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-50">{busy ? "Deleting…" : "Delete permanently"}</button></div></Modal>}
+    {memberPickerOpen && <Modal title="Start a direct message" onClose={() => setMemberPickerOpen(false)}>{membersError && <p className="text-sm text-red-300">{membersError}</p>}{members === null && !membersError && <p className="text-sm text-stone-400">Loading members…</p>}{members?.length === 0 && !membersError && <p className="text-sm text-stone-400">No members in this space yet.</p>}<div className="mt-2 max-h-64 space-y-1 overflow-y-auto">{members?.map((member) => <button key={member.user_id} onClick={() => void pickMember(member.user_id)} disabled={busy} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-stone-200 hover:bg-white/[.06] disabled:opacity-50"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-violet-400 text-[9px] font-bold text-violet-950">{initials(member.display_name)}</span><span className="min-w-0 truncate">{member.display_name}<span className="ml-1.5 text-xs text-stone-500">@{member.username}</span></span></button>)}</div></Modal>}
   </aside>;
 }
 

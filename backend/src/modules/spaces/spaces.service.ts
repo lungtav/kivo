@@ -64,6 +64,14 @@ export const listSpaces = async (userId: string) => {
   return spacesRepository.listSpacesForUser(userId);
 };
 
+export const listMembers = async (spaceId: string, userId: string) => {
+  const membership = await spacesRepository.getMembership(spaceId, userId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+  return spacesRepository.listSpaceMembers(spaceId);
+};
+
 export const getSpace = async (spaceId: string, userId: string) => {
   const membership = await spacesRepository.getMembership(spaceId, userId);
   if (!membership) {

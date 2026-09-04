@@ -68,6 +68,19 @@ export const listSpaces = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({ message: "space fetched successfully", spaces });
 });
 
+export const listSpaceMembers = asyncHandler(
+  async (req: Request<{ spaceId: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const members = await spacesService.listMembers(req.params.spaceId, userId);
+    res.status(200).json({ members });
+  },
+);
+
 export const getSpace = asyncHandler(
   async (req: Request<{ spaceId: string }>, res: Response) => {
     const userId = req.user.id;

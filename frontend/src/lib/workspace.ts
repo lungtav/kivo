@@ -37,6 +37,30 @@ export type ApiMessage = {
   sender_username: string | null;
 };
 
+export type SpaceMember = {
+  user_id: string;
+  role: "owner" | "admin" | "member";
+  display_name: string;
+  username: string;
+  avatar_url: string | null;
+};
+
+export type DirectConversation = {
+  id: string;
+  type: "dm" | "group_dm";
+  name: string | null;
+  peer_id: string | null;
+  peer_display_name: string | null;
+  peer_username: string | null;
+  peer_avatar_url: string | null;
+  member_count: number;
+};
+
+export const conversationDisplayName = (conversation: DirectConversation) =>
+  conversation.type === "dm"
+    ? conversation.peer_display_name ?? conversation.peer_username ?? "Unknown user"
+    : conversation.name ?? "Group";
+
 export const listSpaces = () => apiRequest<{ spaces: Space[] }>("/api/spaces");
 export const getSpace = (spaceId: string) => apiRequest<{ space: SpaceStructure }>(`/api/spaces/${spaceId}`);
 export const getMessages = (conversationId: string, params?: { before?: string; limit?: number }) => {
@@ -54,3 +78,6 @@ export const createSpace = (name: string) => apiRequest<{ space: Space }>("/api/
 export const deleteSpace = (spaceId: string) => apiRequest<void>(`/api/spaces/${spaceId}`, { method: "DELETE" });
 export const deleteCategory = (categoryId: string) => apiRequest<void>(`/api/spaces/categories/${categoryId}`, { method: "DELETE" });
 export const deleteChannel = (channelId: string) => apiRequest<void>(`/api/channel/${channelId}`, { method: "DELETE" });
+export const listSpaceMembers = (spaceId: string) => apiRequest<{ members: SpaceMember[] }>(`/api/spaces/${spaceId}/members`);
+export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
+export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });
