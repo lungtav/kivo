@@ -3,7 +3,7 @@ import { AtSign, Bell, Hash, Pin, Search, Users } from "lucide-react";
 import { MessageComposer } from "../components/app/MessageComposer";
 import { MessageItem, type Message } from "../components/app/MessageItem";
 import { WorkspaceShell, type SelectedConversation } from "../components/app/WorkspaceShell";
-import { getMessages, joinChannel, sendMessage, editMessage, deleteMessage, type ApiMessage } from "../lib/workspace";
+import { getMessages, joinChannel, sendMessage, editMessage, deleteMessage, markConversationRead, type ApiMessage } from "../lib/workspace";
 import { ApiError } from "../lib/api";
 import { connectRealtime, getRealtimeSocket } from "../lib/realtime";
 
@@ -37,7 +37,7 @@ export default function WorkspacePage() {
   return <WorkspaceShell>{(props) => <WorkspaceContent {...props} />}</WorkspaceShell>;
 }
 
-function WorkspaceContent({ selectedChannel }: { selectedChannel: SelectedConversation | null }) {
+function WorkspaceContent({ selectedChannel, refreshConversations }: { selectedChannel: SelectedConversation | null; refreshConversations?: () => void }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -77,7 +77,12 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: SelectedConver
       setMessages([]);
       setNextCursor(null);
       const conversationId = selectedChannel.id;
-      const load = () => getMessages(conversationId).then(({ messages: items, nextCursor: cursor }) => { if (active) { setMessages(items.map(toMessage)); setNextCursor(cursor); } });
+      const load = () => getMessages(conversationId).then(({ messages: items, nextCursor: cursor }) => {
+        if (!active) return;
+        setMessages(items.map(toMessage));
+        setNextCursor(cursor);
+        void markConversationRead(conversationId).then(() => refreshConversations?.()).catch(() => {});
+      });
       void load()
         .catch(async (error: unknown) => {
           // channels are opt-in for regular members — a 404 means we haven't joined yet
@@ -119,7 +124,13 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: SelectedConver
       if (wasConnected) refreshMessages();
       wasConnected = true;
     };
-    const onMessage = (message: ApiMessage) => { if (message.conversation_id === conversationId) appendMessage(message); };
+    const onMessage = (message: ApiMessage) => {
+      if (message.conversation_id !== conversationId) return;
+      appendMessage(message);
+      if (document.visibilityState === "visible") {
+        void markConversationRead(conversationId).then(() => refreshConversations?.()).catch(() => {});
+      }
+    };
     const onMessageUpdate = (message: ApiMessage) => {
       if (message.conversation_id !== conversationId) return;
       setMessages((current) => current.map((existing) => existing.id === message.id ? toMessage(message) : existing));

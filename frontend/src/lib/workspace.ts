@@ -55,6 +55,7 @@ export type DirectConversation = {
   peer_username: string | null;
   peer_avatar_url: string | null;
   member_count: number;
+  unread_count: number;
 };
 
 export type SpaceInvite = {
@@ -85,6 +86,7 @@ export const getMessages = (conversationId: string, params?: { before?: string; 
 export const sendMessage = (conversationId: string, content: string) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content }) });
 export const editMessage = (messageId: string, content: string) => apiRequest<{ messageUpdated: ApiMessage }>(`/api/messages/${messageId}`, { method: "PATCH", body: JSON.stringify({ content }) });
 export const deleteMessage = (messageId: string) => apiRequest<void>(`/api/messages/${messageId}`, { method: "DELETE" });
+export const markConversationRead = (conversationId: string) => apiRequest<void>(`/api/messages/${conversationId}/read`, { method: "POST" });
 export const joinChannel = (channelId: string) => apiRequest<{ message: string }>(`/api/channel/${channelId}/join`, { method: "POST" });
 export const createCategory = (spaceId: string, name: string) => apiRequest<{ category: ChannelGroup }>(`/api/spaces/${spaceId}/categories`, { method: "POST", body: JSON.stringify({ name }) });
 export const createChannel = (spaceId: string, name: string, categoryId?: string) => apiRequest<{ channel: Channel }>(`/api/spaces/${spaceId}/channels`, { method: "POST", body: JSON.stringify({ name, ...(categoryId ? { categoryId } : {}) }) });

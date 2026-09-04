@@ -104,6 +104,22 @@ export const isConversationMember = async (
   return result.rows.length > 0;
 };
 
+export const markConversationRead = async (conversationId: string, userId: string) => {
+  const result = await db.query(
+    `UPDATE conversation_members
+     SET last_read_message_id = (
+       SELECT id FROM messages
+       WHERE conversation_id = $1 AND deleted_at IS NULL
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1
+     )
+     WHERE conversation_id = $1 AND user_id = $2 AND left_at IS NULL
+     RETURNING last_read_message_id`,
+    [conversationId, userId],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const listConversationIdsForUser = async (userId: string) => {
   const result = await db.query(
     `SELECT conversation_id FROM conversation_members

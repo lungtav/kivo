@@ -21,13 +21,15 @@ export const createSocketServer = (httpServer: HttpServer) => {
 
     await presenceRepository.registerConnection(connectionId, userId);
     const user = await messagesRepository.getUserProfile(userId);
-    io.emit("presence:online", { userId });
 
     const conversationIds =
       await messagesRepository.listConversationIdsForUser(userId);
+    socket.data.conversationIds = conversationIds;
 
     for (const id of conversationIds) {
       socket.join(`conversation:${id}`);
+      // presence scoped to conversations the user shares, not a global broadcast
+      socket.to(`conversation:${id}`).emit("presence:online", { userId });
     }
 
     //refresh connection
@@ -96,7 +98,9 @@ export const createSocketServer = (httpServer: HttpServer) => {
         userId,
       );
       if (wasLastConnection) {
-        io.emit("presence:offline", { userId });
+        for (const id of (socket.data.conversationIds as string[]) ?? []) {
+          socket.to(`conversation:${id}`).emit("presence:offline", { userId });
+        }
       }
     });
   });

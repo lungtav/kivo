@@ -65,6 +65,19 @@ export const getMessages = asyncHandler(
   },
 );
 
+export const markRead = asyncHandler(
+  async (req: Request<{ conversationId: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    await messagesService.markConversationRead(req.params.conversationId, userId);
+    res.status(204).send();
+  },
+);
+
 export const editMessage = asyncHandler(
   async (req: Request<{ messageId: string }, {}, { content: string }>, res: Response) => {
     const userId = req.user.id;

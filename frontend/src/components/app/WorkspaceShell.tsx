@@ -29,6 +29,7 @@ type WorkspaceShellProps = {
   children: (props: {
     selectedSpace: Space | null;
     selectedChannel: SelectedConversation | null;
+    refreshConversations: () => void;
   }) => ReactNode;
 };
 
@@ -164,6 +165,12 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setSelectedSpaceId(result.spaceId);
   };
 
+  const refreshConversations = () => {
+    void listConversations()
+      .then(({ conversations: items }) => setConversations(items))
+      .catch(() => {});
+  };
+
   return (
     <main className="flex h-svh overflow-hidden bg-[#17171b]">
       <WorkspaceSidebar
@@ -189,7 +196,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ selectedSpace, selectedChannel })}
+        {children({ selectedSpace, selectedChannel, refreshConversations })}
       </section>
     </main>
   );

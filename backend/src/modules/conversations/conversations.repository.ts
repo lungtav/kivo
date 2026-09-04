@@ -14,7 +14,17 @@ const conversationSelection = `
     (
       SELECT COUNT(*)::int FROM conversation_members active
       WHERE active.conversation_id = c.id AND active.left_at IS NULL
-    ) AS member_count
+    ) AS member_count,
+    (
+      SELECT COUNT(*)::int FROM messages unread
+      WHERE unread.conversation_id = c.id
+        AND unread.deleted_at IS NULL
+        AND unread.sender_id <> mine.user_id
+        AND (mine.last_read_message_id IS NULL OR unread.created_at > COALESCE(
+          (SELECT marker.created_at FROM messages marker WHERE marker.id = mine.last_read_message_id),
+          to_timestamp(0)
+        ))
+    ) AS unread_count
   FROM conversations c
   JOIN conversation_members mine
     ON mine.conversation_id = c.id AND mine.user_id = $1 AND mine.left_at IS NULL

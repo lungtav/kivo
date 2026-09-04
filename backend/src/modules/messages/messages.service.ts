@@ -120,6 +120,20 @@ export const deleteMessage = async (messageId: string, userId: string) => {
     });
 };
 
+export const markConversationRead = async (
+  conversationId: string,
+  userId: string,
+) => {
+  const isMember = await messagesRepository.isConversationMember(
+    conversationId,
+    userId,
+  );
+  if (!isMember) {
+    throw new NotFoundError("conversation not found");
+  }
+  return messagesRepository.markConversationRead(conversationId, userId);
+};
+
 export const getMessages = async (
   conversationId: string,
   userId: string,
