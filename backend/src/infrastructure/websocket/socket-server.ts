@@ -52,37 +52,38 @@ export const createSocketServer = (httpServer: HttpServer) => {
           userId,
           { content: payload.content, replyToId: payload.replyToId },
         );
-        io.to(`conversation:${payload.conversationId}`).emit(
-          "message:new",
-          message,
-        );
         ack?.({ status: "ok", message });
       } catch (err: any) {
         ack?.({ status: "error", message: err.message ?? "failed to send" });
       }
     });
 
-    socket.on("typing:start", (payload) => {
+    const emitTyping = async (
+      payload: { conversationId?: string },
+      isTyping: boolean,
+    ) => {
       if (!payload?.conversationId || !user) return;
+      if (
+        !(await messagesRepository.isConversationMember(
+          payload.conversationId,
+          userId,
+        ))
+      ) {
+        return;
+      }
       socket
         .to(`conversation:${payload.conversationId}`)
         .emit("typing:update", {
           userId,
           conversationId: payload.conversationId,
           user: { displayName: user.display_name, avatarUrl: user.avatar_url },
-          isTyping: true,
+          isTyping,
         });
-    });
+    };
 
-    socket.on("typing:stop", (payload) => {
-      if (!payload?.conversationId || !user) return;
-      socket.to(`conversation:${payload.conversationId}`).emit("typing:update", {
-        userId,
-        conversationId: payload.conversationId,
-        user: { displayName: user.display_name, avatarUrl: user.avatar_url },
-        isTyping: false,
-      });
-    });
+    socket.on("typing:start", (payload) => void emitTyping(payload, true));
+
+    socket.on("typing:stop", (payload) => void emitTyping(payload, false));
 
     socket.on("disconnect", async () => {
       const wasLastConnection = await presenceRepository.removeConnection(

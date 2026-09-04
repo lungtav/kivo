@@ -2,6 +2,7 @@ import type { CreateMessageInput } from "./messages.types.js";
 import { ValidationError } from "../../shared/errors/ValidationError.js";
 import { NotFoundError } from "../../shared/errors/NotFoundError.js";
 import { mediaQueue } from "../../infrastructure/queue/queue.js";
+import { getSocketServer } from "../../infrastructure/websocket/io.js";
 import * as messagesRepository from "../messages/messages.repository.js";
 
 export const sendMessage = async (
@@ -49,6 +50,11 @@ export const sendMessage = async (
   for (const attachment of message.attachments) {
     await mediaQueue.add("process-attachment", { attachmentId: attachment.id });
   }
+
+  // broadcast from the service so REST and socket sends reach the room exactly once
+  getSocketServer()
+    ?.to(`conversation:${conversationId}`)
+    .emit("message:new", message);
 
   return message;
 };
