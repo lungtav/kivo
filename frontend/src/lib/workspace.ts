@@ -140,9 +140,11 @@ export type UserProfile = {
   display_name: string;
   username: string;
   avatar_url: string | null;
+  created_at?: string;
 };
 
 export const getMe = () => apiRequest<{ user: UserProfile }>("/api/me");
+export const getProfile = (userId: string) => apiRequest<{ user: UserProfile }>(`/api/users/${userId}`);
 export const updateProfile = (input: { display_name?: string; username?: string; avatar_url?: string }) => apiRequest<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(input) });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
 export const listPeers = () => apiRequest<{ peers: Peer[] }>("/api/conversations/peers");

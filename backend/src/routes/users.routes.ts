@@ -1,9 +1,13 @@
 import { Router } from "express";
-import { getMe, updateMe } from "../modules/users/users.controller.js";
+import { getMe, getUserProfile, updateMe } from "../modules/users/users.controller.js";
 
 const meRouter = Router();
 
 meRouter.get("/", getMe);
 meRouter.patch("/", updateMe);
 
-export { meRouter };
+const usersRouter = Router();
+
+usersRouter.get("/:userId", getUserProfile);
+
+export { meRouter, usersRouter };

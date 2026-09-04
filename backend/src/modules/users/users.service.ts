@@ -13,6 +13,19 @@ export const getProfile = async (userId: string) => {
   return profile;
 };
 
+export const getPublicProfile = async (requesterId: string, targetUserId: string) => {
+  // profiles are visible to yourself and to people who share a space with you
+  if (requesterId !== targetUserId && !(await usersRepository.sharesSpaceWith(requesterId, targetUserId))) {
+    throw new NotFoundError("user not found");
+  }
+
+  const profile = await usersRepository.findProfileById(targetUserId);
+  if (!profile) {
+    throw new NotFoundError("user not found");
+  }
+  return profile;
+};
+
 export const updateProfile = async (userId: string, input: UpdateProfileInput) => {
   if (input.username !== undefined) {
     const taken = await usersRepository.findUsernameTaken(input.username, userId);

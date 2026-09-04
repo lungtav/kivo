@@ -19,6 +19,19 @@ export const findUsernameTaken = async (username: string, excludeUserId: string)
   return result.rows.length > 0;
 };
 
+export const sharesSpaceWith = async (userId: string, targetUserId: string) => {
+  const result = await db.query(
+    `SELECT 1
+     FROM space_members mine
+     JOIN space_members theirs
+       ON theirs.space_id = mine.space_id AND theirs.user_id = $2 AND theirs.left_at IS NULL
+     WHERE mine.user_id = $1 AND mine.left_at IS NULL
+     LIMIT 1`,
+    [userId, targetUserId],
+  );
+  return result.rows.length > 0;
+};
+
 export const updateProfile = async (
   userId: string,
   fields: { display_name?: string; username?: string; avatar_url?: string },
