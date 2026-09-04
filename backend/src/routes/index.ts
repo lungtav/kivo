@@ -10,6 +10,10 @@ import { meRouter } from "./users.routes.js";
 
 const appRouter = Router();
 
+appRouter.get("/health", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 appRouter.use("/auth", authRouter);
 appRouter.use("/spaces", authMiddleware, spacesRouter);
 appRouter.use("/channel", authMiddleware, channelsRouter);

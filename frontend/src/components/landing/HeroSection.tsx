@@ -9,7 +9,7 @@ export default function HeroSection() {
             Space for your team, friends and communities
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto font-normal leading-relaxed ">
-            i don't know what to put here, might think of something later or never. Who knows?
+            Create a space, organize channels around your topics, and talk in realtime — with invites, direct messages and everything in between.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
