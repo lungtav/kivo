@@ -3,7 +3,8 @@ import { Bell, Hash, Pin, Search, Users } from "lucide-react";
 import { MessageComposer } from "../components/app/MessageComposer";
 import { MessageItem, type Message } from "../components/app/MessageItem";
 import { WorkspaceShell } from "../components/app/WorkspaceShell";
-import { getMessages, sendMessage, type ApiMessage, type Channel } from "../lib/workspace";
+import { getMessages, joinChannel, sendMessage, type ApiMessage, type Channel } from "../lib/workspace";
+import { ApiError } from "../lib/api";
 import { connectRealtime, getRealtimeSocket } from "../lib/realtime";
 
 type TypingUser = { userId: string; displayName: string; avatarUrl: string | null };
@@ -70,10 +71,18 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
       setLoadingMessages(true);
       setMessagesError(null);
       setMessages([]);
-      void getMessages(selectedChannel.id)
-        .then(({ messages: items }) => active && setMessages(items.reverse().map(toMessage)))
-        .catch((error: unknown) => active && setMessagesError(error instanceof Error ? error.message : "Could not load messages."))
-        .finally(() => active && setLoadingMessages(false));
+      const conversationId = selectedChannel.id;
+      const load = () => getMessages(conversationId).then(({ messages: items }) => { if (active) setMessages(items.reverse().map(toMessage)); });
+      void load()
+        .catch(async (error: unknown) => {
+          // channels are opt-in for regular members — a 404 means we haven't joined yet
+          if (!active || !(error instanceof ApiError) || error.code !== "NOT_FOUND") throw error;
+          await joinChannel(conversationId);
+          getRealtimeSocket()?.emit("conversation:join", { conversationId });
+          await load();
+        })
+        .catch((error: unknown) => { if (active) setMessagesError(error instanceof Error ? error.message : "Could not load messages."); })
+        .finally(() => { if (active) setLoadingMessages(false); });
       return () => { active = false; };
   }, [selectedChannel?.id]);
 

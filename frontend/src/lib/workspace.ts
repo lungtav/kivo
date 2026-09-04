@@ -41,6 +41,7 @@ export const listSpaces = () => apiRequest<{ spaces: Space[] }>("/api/spaces");
 export const getSpace = (spaceId: string) => apiRequest<{ space: SpaceStructure }>(`/api/spaces/${spaceId}`);
 export const getMessages = (conversationId: string) => apiRequest<{ messages: ApiMessage[] }>(`/api/messages/${conversationId}`);
 export const sendMessage = (conversationId: string, content: string) => apiRequest<{ messageSent: ApiMessage }>(`/api/messages/${conversationId}`, { method: "POST", body: JSON.stringify({ content }) });
+export const joinChannel = (channelId: string) => apiRequest<{ message: string }>(`/api/channel/${channelId}/join`, { method: "POST" });
 export const createCategory = (spaceId: string, name: string) => apiRequest<{ category: ChannelGroup }>(`/api/spaces/${spaceId}/categories`, { method: "POST", body: JSON.stringify({ name }) });
 export const createChannel = (spaceId: string, name: string, categoryId?: string) => apiRequest<{ channel: Channel }>(`/api/spaces/${spaceId}/channels`, { method: "POST", body: JSON.stringify({ name, ...(categoryId ? { categoryId } : {}) }) });
 export const createSpace = (name: string) => apiRequest<{ space: Space }>("/api/spaces", { method: "POST", body: JSON.stringify({ name }) });
