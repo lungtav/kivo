@@ -119,6 +119,7 @@ export const getAttachmentReadUrl = (attachmentId: string) => apiRequest<{ readU
 export const editMessage = (messageId: string, content: string) => apiRequest<{ messageUpdated: ApiMessage }>(`/api/messages/${messageId}`, { method: "PATCH", body: JSON.stringify({ content }) });
 export const deleteMessage = (messageId: string) => apiRequest<void>(`/api/messages/${messageId}`, { method: "DELETE" });
 export const markConversationRead = (conversationId: string) => apiRequest<void>(`/api/messages/${conversationId}/read`, { method: "POST" });
+export const searchMessages = (conversationId: string, query: string) => apiRequest<{ results: { id: string; conversation_id: string; content: string | null; created_at: string; sender_display_name: string | null; sender_username: string | null }[] }>(`/api/messages/${conversationId}/search?q=${encodeURIComponent(query)}`);
 export const joinChannel = (channelId: string) => apiRequest<{ message: string }>(`/api/channel/${channelId}/join`, { method: "POST" });
 export const createCategory = (spaceId: string, name: string) => apiRequest<{ category: ChannelGroup }>(`/api/spaces/${spaceId}/categories`, { method: "POST", body: JSON.stringify({ name }) });
 export const createChannel = (spaceId: string, name: string, categoryId?: string) => apiRequest<{ channel: Channel }>(`/api/spaces/${spaceId}/channels`, { method: "POST", body: JSON.stringify({ name, ...(categoryId ? { categoryId } : {}) }) });

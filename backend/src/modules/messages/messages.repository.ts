@@ -239,6 +239,22 @@ export const getMessages = async (
   return result.rows;
 };
 
+export const searchMessages = async (conversationId: string, query: string) => {
+  const result = await db.query(
+    `SELECT m.id, m.conversation_id, m.content, m.created_at,
+            u.display_name AS sender_display_name, u.username AS sender_username
+     FROM messages m
+     JOIN users u ON u.id = m.sender_id
+     WHERE m.conversation_id = $1
+       AND m.deleted_at IS NULL
+       AND m.content ILIKE '%' || $2 || '%'
+     ORDER BY m.created_at DESC
+     LIMIT 20`,
+    [conversationId, query],
+  );
+  return result.rows;
+};
+
 export const getUserProfile = async (userId: string) => {
   const result = await db.query(
     `SELECT id, display_name, username, avatar_url FROM users

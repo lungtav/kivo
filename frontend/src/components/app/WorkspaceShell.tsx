@@ -25,6 +25,7 @@ export type SelectedConversation = {
   id: string;
   name: string;
   kind: "channel" | "direct";
+  peerId?: string;
 };
 
 type WorkspaceShellProps = {
@@ -34,6 +35,7 @@ type WorkspaceShellProps = {
     selectedChannel: SelectedConversation | null;
     refreshConversations: () => void;
     onConversationActivity: (conversationId: string, kind: "read" | "new") => void;
+    onOpenMembers: () => void;
   }) => ReactNode;
 };
 
@@ -49,6 +51,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
   const [selectedDirectId, setSelectedDirectId] = useState<string | null>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   useEffect(() => {
     void listSpaces()
@@ -104,7 +107,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const direct = conversations.find((item) => item.id === selectedDirectId) ?? null;
   const selectedChannel: SelectedConversation | null = view === "home"
     ? direct
-      ? { id: direct.id, name: conversationDisplayName(direct), kind: "direct" }
+      ? { id: direct.id, name: conversationDisplayName(direct), kind: "direct", peerId: direct.peer_id ?? undefined }
       : null
     : channel
       ? { id: channel.id, name: channel.name, kind: "channel" }
@@ -226,6 +229,8 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         space={space}
         selectedSpaceId={selectedSpaceId}
         selectedChannelId={selectedChannelId}
+        membersOpen={membersOpen}
+        onMembersOpenChange={setMembersOpen}
         onSelectSpace={selectSpace}
         onSelectChannel={selectChannel}
         view={view}
@@ -244,7 +249,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true) })}
       </section>
     </main>
   );

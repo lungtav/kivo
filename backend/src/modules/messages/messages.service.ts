@@ -134,6 +134,21 @@ export const markConversationRead = async (
   return messagesRepository.markConversationRead(conversationId, userId);
 };
 
+export const searchMessages = async (
+  conversationId: string,
+  userId: string,
+  query: string,
+) => {
+  const isMember = await messagesRepository.isConversationMember(
+    conversationId,
+    userId,
+  );
+  if (!isMember) {
+    throw new NotFoundError("conversation not found");
+  }
+  return messagesRepository.searchMessages(conversationId, query);
+};
+
 export const getMessages = async (
   conversationId: string,
   userId: string,

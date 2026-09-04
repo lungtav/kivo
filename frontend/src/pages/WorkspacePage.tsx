@@ -1,19 +1,21 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { AtSign, Bell, Hash, Pin, Search, Users } from "lucide-react";
+import { AtSign, Hash, Search, Settings, User, Users, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { MessageComposer } from "../components/app/MessageComposer";
 import { MessageItem, type Message } from "../components/app/MessageItem";
 import { WorkspaceShell, type SelectedConversation } from "../components/app/WorkspaceShell";
-import { getMessages, joinChannel, sendMessage, requestUploadUrl, uploadToStorage, editMessage, deleteMessage, markConversationRead, type ApiMessage } from "../lib/workspace";
+import { getMessages, joinChannel, sendMessage, requestUploadUrl, uploadToStorage, editMessage, deleteMessage, markConversationRead, searchMessages, type ApiMessage } from "../lib/workspace";
 import { ApiError } from "../lib/api";
 import { connectRealtime, getRealtimeSocket } from "../lib/realtime";
 
 type TypingUser = { userId: string; displayName: string; avatarUrl: string | null };
 
-const currentUserId = () => {
+const currentUserId = (): string | null => {
   try {
     const token = localStorage.getItem("kivo_access_token");
-    const payload = token && JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))) as { sub?: string };
-    return payload?.sub ?? null;
+    if (!token) return null;
+    const payload: { sub?: string } = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.sub ?? null;
   } catch {
     return null;
   }
@@ -46,6 +48,7 @@ const toMessage = (message: ApiMessage): Message => {
     body: message.content ?? "",
     accent: "violet",
     isOwn: message.sender_id === currentUserId(),
+    authorId: message.sender_id,
     sentAt,
     edited: !!message.edited_at && !deleted,
     deleted,
@@ -64,7 +67,9 @@ export default function WorkspacePage() {
   return <WorkspaceShell>{(props) => <WorkspaceContent {...props} />}</WorkspaceShell>;
 }
 
-function WorkspaceContent({ view, selectedChannel, refreshConversations, onConversationActivity }: { view: "home" | "space"; selectedChannel: SelectedConversation | null; refreshConversations?: () => void; onConversationActivity?: (conversationId: string, kind: "read" | "new") => void }) {
+function WorkspaceContent({ view, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers }: { view: "home" | "space"; selectedChannel: SelectedConversation | null; refreshConversations?: () => void; onConversationActivity?: (conversationId: string, kind: "read" | "new") => void; onOpenMembers?: () => void }) {
+  const navigate = useNavigate();
+  const viewProfile = (userId: string) => navigate(`/app/profile/${userId}`);
   const [messages, setMessages] = useState<Message[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -73,6 +78,10 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations, onConve
   const [typingUsers, setTypingUsers] = useState<Record<string, TypingUser>>({});
   const [isOnline, setIsOnline] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  type MessageSearchResult = { id: string; content: string | null; created_at: string; sender_display_name: string | null; sender_username: string | null };
+  const [searchResults, setSearchResults] = useState<MessageSearchResult[] | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeouts = useRef<Record<string, number>>({});
   const ownTypingTimeout = useRef<number | null>(null);
@@ -80,6 +89,28 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations, onConve
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
+
+  // live message search inside the open conversation
+  const searchConversationId = selectedChannel?.id;
+  useEffect(() => {
+    if (!searchOpen || !searchConversationId) {
+      setSearchResults(null);
+      return;
+    }
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void searchMessages(searchConversationId, query)
+        .then(({ results }) => setSearchResults(results))
+        .catch(() => setSearchResults([]));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery, searchOpen, searchConversationId]);
+
+  const closeSearch = () => { setSearchOpen(false); setSearchQuery(""); setSearchResults(null); };
 
   useEffect(() => {
     const socket = connectRealtime();
@@ -239,11 +270,11 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations, onConve
   }, [selectedChannel?.id]);
 
   const typers = Object.values(typingUsers);
-  return <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-foreground"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-border bg-card px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3">{selectedChannel?.kind === "direct" ? <AtSign size={19} className="text-muted-foreground" /> : <Hash size={19} className="text-muted-foreground" />}<div><h1 className="truncate text-sm font-semibold text-foreground">{selectedChannel?.name ?? (view === "home" ? "Select a conversation" : "Select a channel")}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1"><HeaderButton label="Pinned messages"><Pin size={17} /></HeaderButton><HeaderButton label="Notifications"><Bell size={17} /></HeaderButton><HeaderButton label="Search"><Search size={17} /></HeaderButton><button className="ml-1 grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="People"><Users size={17} /></button></div></header><div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain px-5 py-6"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}{loadingMessages && <p className="text-sm text-muted-foreground">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-500">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message, index) => { const previous = messages[index - 1]; return <Fragment key={message.id}>{(!previous || !isSameDay(previous.sentAt, message.sentAt)) && <div className="mb-6 mt-2 flex items-center gap-3"><div className="h-px flex-1 bg-border" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{dayLabel(message.sentAt)}</span><div className="h-px flex-1 bg-border" /></div>}<MessageItem message={message} onEdit={handleEdit} onDelete={handleDelete} onReply={setReplyingTo} /></Fragment>; })}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} replyTo={replyingTo ? { author: replyingTo.author, body: replyingTo.body } : null} onCancelReply={() => setReplyingTo(null)} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
+  return <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-foreground"><section className="flex min-w-0 flex-1 flex-col"><header className="flex h-auto min-h-14 shrink-0 items-center justify-between border-b border-border bg-card px-5 py-2.5 shadow-sm"><div className="flex min-w-0 items-center gap-3">{selectedChannel?.kind === "direct" ? <AtSign size={19} className="text-muted-foreground" /> : <Hash size={19} className="text-muted-foreground" />}<div><h1 className="truncate text-sm font-semibold text-foreground">{selectedChannel?.name ?? (view === "home" ? "Select a conversation" : "Select a channel")}</h1>{selectedChannel && <p className={`mt-0.5 flex items-center gap-1.5 text-[11px] ${isOnline ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}><span className={`size-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-600"}`} /> {isOnline ? "Live" : "Reconnecting…"} · members with access can view this channel</p>}</div></div><div className="flex items-center gap-1">{selectedChannel && <HeaderButton label="Search messages" onClick={() => { setSearchOpen((open) => !open); setSearchQuery(""); setSearchResults(null); }}><Search size={17} /></HeaderButton>}{selectedChannel?.kind === "direct" && selectedChannel.peerId && <HeaderButton label="View profile" onClick={() => viewProfile(selectedChannel.peerId!)}><User size={17} /></HeaderButton>}{selectedChannel?.kind === "channel" && <HeaderButton label="Members" onClick={() => onOpenMembers?.()}><Users size={17} /></HeaderButton>}<HeaderButton label="Your profile and settings" onClick={() => { const userId = currentUserId(); if (userId) viewProfile(userId); }}><Settings size={17} /></HeaderButton></div></header>{searchOpen && selectedChannel && <div className="border-b border-border bg-card px-5 py-3"><div className="mx-auto flex max-w-4xl items-center gap-2"><input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={`Search in ${selectedChannel.kind === "direct" ? "@" : "#"}${selectedChannel.name}`} className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /><button onClick={closeSearch} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Close search"><X size={15} /></button></div>{searchResults && <div className="mx-auto mt-2 max-h-64 max-w-4xl divide-y divide-border overflow-y-auto rounded-xl border border-border bg-background shadow-sm">{searchResults.length === 0 && searchQuery.trim().length >= 2 && <p className="px-3 py-2.5 text-xs text-muted-foreground">No messages match “{searchQuery.trim()}”.</p>}{searchQuery.trim().length < 2 && <p className="px-3 py-2.5 text-xs text-muted-foreground">Type at least 2 characters.</p>}{searchResults.map((result) => <button key={result.id} onClick={() => { document.getElementById(`message-${result.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }); closeSearch(); }} className="block w-full px-3 py-2 text-left hover:bg-foreground/5"><span className="text-xs font-semibold text-foreground">{result.sender_display_name ?? result.sender_username}</span><span className="ml-2 text-[10px] text-muted-foreground">{new Date(result.created_at).toLocaleString()}</span><p className="truncate text-xs text-muted-foreground">{result.content}</p></button>)}</div>}</div>}<div className="flex min-h-0 flex-1 flex-col"><div className="flex-1 overflow-y-auto overscroll-contain px-5 py-6"><div className="mx-auto max-w-4xl">{nextCursor && !loadingMessages && <div className="mb-4 flex justify-center"><button onClick={() => void loadOlder()} disabled={loadingOlder} className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground hover:bg-foreground/5 hover:text-foreground disabled:opacity-50">{loadingOlder ? "Loading…" : "Load earlier messages"}</button></div>}{loadingMessages && <p className="text-sm text-muted-foreground">Loading messages…</p>}{messagesError && <p role="alert" className="text-sm text-red-500">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>}<div className="space-y-1">{messages.map((message, index) => { const previous = messages[index - 1]; return <Fragment key={message.id}>{(!previous || !isSameDay(previous.sentAt, message.sentAt)) && <div className="mb-6 mt-2 flex items-center gap-3"><div className="h-px flex-1 bg-border" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{dayLabel(message.sentAt)}</span><div className="h-px flex-1 bg-border" /></div>}<MessageItem message={message} onEdit={handleEdit} onDelete={handleDelete} onReply={setReplyingTo} /></Fragment>; })}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} replyTo={replyingTo ? { author: replyingTo.author, body: replyingTo.body } : null} onCancelReply={() => setReplyingTo(null)} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
 }
 
 function TypingIndicator({ users }: { users: TypingUser[] }) { if (!users.length) return <div className="h-7" />; const names = users.map((user) => user.displayName).join(", "); return <div className="mx-auto flex h-7 w-full max-w-4xl items-center gap-2 px-5 text-xs text-muted-foreground"><div className="flex -space-x-2">{users.slice(0, 3).map((user) => user.avatarUrl ? <img key={user.userId} src={user.avatarUrl} alt="" className="size-5 rounded-full border-2 border-background object-cover" /> : <span key={user.userId} className="grid size-5 place-items-center rounded-full border-2 border-background bg-muted text-[8px] font-bold text-muted-foreground">{user.displayName.slice(0, 1).toUpperCase()}</span>)}</div><span>{`${names}${users.length > 3 ? ` and ${users.length - 3} more` : ""} ${users.length === 1 ? "is" : "are"} typing…`}</span></div>; }
 
-function HeaderButton({ label, children }: { label: string; children: React.ReactNode }) {
-  return <button aria-label={label} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground">{children}</button>;
+function HeaderButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
+  return <button aria-label={label} onClick={onClick} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground">{children}</button>;
 }

@@ -78,6 +78,32 @@ export const markRead = asyncHandler(
   },
 );
 
+export const searchMessages = asyncHandler(
+  async (
+    req: Request<{ conversationId: string }, {}, {}, { q?: string }>,
+    res: Response,
+  ) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const query = (req.query.q ?? "").trim();
+    if (query.length < 2) {
+      res.status(200).json({ results: [] });
+      return;
+    }
+
+    const results = await messagesService.searchMessages(
+      req.params.conversationId,
+      userId,
+      query,
+    );
+    res.status(200).json({ results });
+  },
+);
+
 export const editMessage = asyncHandler(
   async (req: Request<{ messageId: string }, {}, { content: string }>, res: Response) => {
     const userId = req.user.id;

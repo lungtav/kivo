@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight, Copy, DoorOpen, Hash, LogOut, MessageCircle, Plus, Settings, Trash2, User, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import kivoLogo from "../../assets/kivo-logo.jfif";
 import { logout } from "../../lib/auth";
 import { getRealtimeSocket } from "../../lib/realtime";
 import {
@@ -30,6 +29,7 @@ type Props = {
   isOpen: boolean; onToggle: () => void; spaces: Space[]; space: SpaceStructure | null;
   view: "home" | "space"; onSelectHome: () => void;
   selectedSpaceId: string | null; selectedChannelId: string | null;
+  membersOpen: boolean; onMembersOpenChange: (open: boolean) => void;
   directMessages: DirectConversation[]; selectedDirectId: string | null;
   onSelectDirect: (id: string) => void; onCreateDirect: (userId: string) => Promise<void>;
   onSelectSpace: (id: string) => void; onSelectChannel: (id: string) => void;
@@ -44,7 +44,7 @@ type Deleting = { kind: "space" | "category" | "channel"; id?: string; name: str
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
 export function WorkspaceSidebar(props: Props) {
-  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect } = props;
+  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect, membersOpen, onMembersOpenChange } = props;
   const navigate = useNavigate();
   const [creating, setCreating] = useState<Creating>(null);
   const [deleting, setDeleting] = useState<Deleting>(null);
@@ -54,7 +54,6 @@ export function WorkspaceSidebar(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinBusy, setJoinBusy] = useState(false);
@@ -149,8 +148,7 @@ export function WorkspaceSidebar(props: Props) {
 
   return <aside className="flex h-full shrink-0 overflow-hidden bg-background text-foreground">
     <nav className="flex h-full w-[72px] flex-col items-center gap-2 border-r border-border bg-muted py-3">
-      <button className="mb-1 grid size-11 place-items-center rounded-xl" aria-label="Kivo home"><img src={kivoLogo} alt="" className="size-7 rounded-lg object-contain grayscale opacity-80" /></button>
-      <button onClick={() => { setMembersOpen(false); setSettingsOpen(false); onSelectHome(); }} className={`relative grid size-11 place-items-center rounded-xl border transition ${view === "home" ? "border-transparent bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:text-foreground"}`} aria-label="Direct messages"><MessageCircle size={19} />{totalUnread > 0 && view !== "home" && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-muted">{totalUnread > 9 ? "9+" : totalUnread}</span>}</button>
+      <button onClick={() => { onMembersOpenChange(false); setSettingsOpen(false); onSelectHome(); }} className={`relative grid size-11 place-items-center rounded-xl border transition ${view === "home" ? "border-transparent bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:text-foreground"}`} aria-label="Direct messages"><MessageCircle size={19} />{totalUnread > 0 && view !== "home" && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-muted">{totalUnread > 9 ? "9+" : totalUnread}</span>}</button>
       <button onClick={onToggle} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label={isOpen ? "Close workspace sidebar" : "Open workspace sidebar"}>{isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}</button>
       <div className="my-1 h-px w-8 bg-border" />
       {spaces.map((item) => <button key={item.id} title={item.name} onClick={() => { setSettingsOpen(false); onSelectSpace(item.id); }} className={`grid size-11 place-items-center rounded-xl border text-[10px] font-bold transition ${selectedSpaceId === item.id && view !== "home" ? "border-transparent bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>{initials(item.name)}</button>)}
@@ -160,14 +158,14 @@ export function WorkspaceSidebar(props: Props) {
     </nav>
     <div className={`overflow-hidden transition-[width,opacity] duration-200 ${isOpen ? "w-80 opacity-100" : "w-0 opacity-0"}`}>
       <div className="flex h-full w-80 flex-col bg-secondary">
-        {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => setMembersOpen(false)} onLeaveSpace={props.onLeaveSpace} onViewProfile={viewProfile} /> : view === "home" ? <>
+        {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => onMembersOpenChange(false)} onLeaveSpace={props.onLeaveSpace} onViewProfile={viewProfile} /> : view === "home" ? <>
           <div className="border-b border-border bg-card px-5 py-4"><div className="flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">Direct messages</h2><button onClick={openMemberPicker} className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Start a conversation"><Plus size={16} /></button></div><input value={dmQuery} onChange={(event) => setDmQuery(event.target.value)} placeholder="Find a conversation" className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /></div>
           <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
             {visibleConversations.length === 0 && <p className="px-2 py-4 text-sm text-muted-foreground">{directMessages.length === 0 ? "No conversations yet — start one with the + button above." : "No conversations match your search."}</p>}
             {visibleConversations.map((dm) => <div key={dm.id} className={`group flex items-center rounded-lg ${selectedDirectId === dm.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"}`}><button onClick={() => onSelectDirect(dm.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"><span className={`grid size-6 shrink-0 place-items-center rounded-full text-[9px] font-bold ${selectedDirectId === dm.id ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>{initials(conversationDisplayName(dm))}</span><span className="min-w-0 flex-1 truncate">{conversationDisplayName(dm)}</span></button>{dm.unread_count > 0 && selectedDirectId !== dm.id && <span className="mr-2 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">{dm.unread_count > 9 ? "9+" : dm.unread_count}</span>}{dm.peer_id && <button onClick={() => { if (dm.peer_id) viewProfile(dm.peer_id); }} className="mr-1.5 rounded p-1 opacity-0 transition group-hover:opacity-100 hover:bg-foreground/10" aria-label={`View ${conversationDisplayName(dm)}'s profile`}><User size={13} /></button>}</div>)}
           </div>
         </> : <>
-          <div className="border-b border-border bg-card px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Space</p><div className="mt-1 flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">{space?.name ?? "Loading…"}</h2>{canManage && <button onClick={() => setDeleting({ kind: "space", name: space?.name ?? "this space" })} className="rounded-md p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-600" title="Delete space" aria-label="Delete space"><Trash2 size={15} /></button>}</div><div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><button onClick={() => setMembersOpen(true)} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-foreground/5 hover:text-foreground"><Users size={14} /><span>{space?.role === "member" ? "Members" : "Admin controls enabled"}</span></button></div></div>
+          <div className="border-b border-border bg-card px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Space</p><div className="mt-1 flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">{space?.name ?? "Loading…"}</h2>{canManage && <button onClick={() => setDeleting({ kind: "space", name: space?.name ?? "this space" })} className="rounded-md p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-600" title="Delete space" aria-label="Delete space"><Trash2 size={15} /></button>}</div><div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><button onClick={() => onMembersOpenChange(true)} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-foreground/5 hover:text-foreground"><Users size={14} /><span>{space?.role === "member" ? "Members" : "Admin controls enabled"}</span></button></div></div>
           <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-5">
             {creating && creating.kind !== "space" && <CreateForm creating={creating} name={name} busy={busy} error={error} onName={setName} onCancel={() => setCreating(null)} onSubmit={submitCreate} />}
             <ChannelGroup name="Uncategorised" channels={space?.uncategorized_channels ?? []} selected={selectedChannelId} canManage={canManage} onSelect={onSelectChannel} onCreate={() => startCreate("channel")} onDelete={(channel) => setDeleting({ kind: "channel", id: channel.id, name: channel.name })} />
