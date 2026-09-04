@@ -17,3 +17,8 @@ export const CreateMessageSchema = z.object({
     )
     .optional(),
 });
+
+export const GetMessagesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().uuid().optional(),
+});

@@ -94,9 +94,10 @@ export const getMessages = async (
 
   if (before) {
     values.push(before);
+    // row-wise comparison so messages sharing a created_at never get skipped or duplicated
     cursorCondition = `
-      AND m.created_at < (
-        SELECT created_at
+      AND (m.created_at, m.id) < (
+        SELECT created_at, id
         FROM messages
         WHERE id = $3
           AND conversation_id = $1

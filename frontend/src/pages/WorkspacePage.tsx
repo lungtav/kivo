@@ -72,7 +72,7 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
       setMessagesError(null);
       setMessages([]);
       const conversationId = selectedChannel.id;
-      const load = () => getMessages(conversationId).then(({ messages: items }) => { if (active) setMessages(items.reverse().map(toMessage)); });
+      const load = () => getMessages(conversationId).then(({ messages: items }) => { if (active) setMessages(items.map(toMessage)); });
       void load()
         .catch(async (error: unknown) => {
           // channels are opt-in for regular members — a 404 means we haven't joined yet
@@ -91,7 +91,7 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
     const socket = connectRealtime();
     const conversationId = selectedChannel.id;
     socket.emit("conversation:join", { conversationId });
-    const refreshMessages = () => void getMessages(conversationId).then(({ messages: items }) => setMessages(items.reverse().map(toMessage)));
+    const refreshMessages = () => void getMessages(conversationId).then(({ messages: items }) => setMessages(items.map(toMessage)));
     const onMessage = (message: ApiMessage) => { if (message.conversation_id === conversationId) refreshMessages(); };
     const onTyping = (payload: { userId: string; conversationId: string; user: { displayName: string; avatarUrl: string | null }; isTyping: boolean }) => {
       if (payload.conversationId !== conversationId || payload.userId === currentUserId()) return;
@@ -112,7 +112,7 @@ function WorkspaceContent({ selectedChannel }: { selectedChannel: Channel | null
       await new Promise<void>((resolve, reject) => socket.emit("message:send", { conversationId: selectedChannel.id, content: body }, (result: { status: string; message?: string }) => result.status === "ok" ? resolve() : reject(new Error(result.message ?? "Message could not be sent."))));
     } else await sendMessage(selectedChannel.id, body);
     const { messages: items } = await getMessages(selectedChannel.id);
-    setMessages(items.reverse().map(toMessage));
+    setMessages(items.map(toMessage));
   };
 
   const handleTyping = useCallback((typing: boolean) => {

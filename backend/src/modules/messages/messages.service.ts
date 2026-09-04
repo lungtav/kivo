@@ -67,11 +67,13 @@ export const getMessages = async (
     throw new NotFoundError("conversation not found");
   }
 
-  const messages = await messagesRepository.getMessages(
+  // repository returns newest-first for cursor paging; clients get oldest-first
+  const rows = await messagesRepository.getMessages(
     conversationId,
     limit,
     before,
   );
+  const messages = [...rows].reverse();
 
-  return messages;
+  return { messages, nextCursor: messages.length > 0 ? messages[0].id : null };
 };

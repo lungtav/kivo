@@ -1,8 +1,8 @@
 import { asyncHandler } from "../../middleware/async-handler.js";
 import type { Request, Response } from "express";
 import { ValidationError } from "../../shared/errors/ValidationError.js";
-import type { CreateMessageInput, GetMessageQuery } from "./messages.types.js";
-import { CreateMessageSchema } from "./messages.schema.js";
+import type { CreateMessageInput } from "./messages.types.js";
+import { CreateMessageSchema, GetMessagesQuerySchema } from "./messages.schema.js";
 import * as messagesService from "./messages.service.js";
 
 export const sendMessage = asyncHandler(
@@ -37,7 +37,7 @@ export const sendMessage = asyncHandler(
 
 export const getMessages = asyncHandler(
   async (
-    req: Request<{ conversationId: string }, {}, {}, GetMessageQuery>,
+    req: Request<{ conversationId: string }>,
     res: Response,
   ) => {
     const userId = req.user.id;
@@ -46,15 +46,20 @@ export const getMessages = asyncHandler(
       throw new ValidationError("Unauthorized access");
     }
 
-    const limit = req.query.limit ? Number(req.query.limit) : 50;
+    const parsed = GetMessagesQuerySchema.safeParse(req.query);
 
-    const messages = await messagesService.getMessages(
+    if (!parsed.success) {
+      const message = parsed.error.issues.map((e) => e.message).join(", ");
+      throw new ValidationError(message);
+    }
+
+    const { messages, nextCursor } = await messagesService.getMessages(
       req.params.conversationId,
       userId,
-      limit,
-      req.query.before,
+      parsed.data.limit,
+      parsed.data.before,
     );
 
-    res.status(200).json({ messages });
+    res.status(200).json({ messages, nextCursor });
   },
 );
