@@ -44,11 +44,11 @@ export const updateProcessingResult = async (
   return result.rows[0] ?? null;
 };
 
-export const findAttachmentByMessageId = async (messageId: string) => {
+export const findAttachmentById = async (attachmentId: string) => {
   const result = await db.query(
     `SELECT id, message_id, media_type, storage_key, thumbnail_url, processing_status, mime_type, width, height, duration_seconds
-     FROM message_attachments WHERE message_id = $1`,
-    [messageId],
+     FROM message_attachments WHERE id = $1`,
+    [attachmentId],
   );
-  return result.rows;
+  return result.rows[0] ?? null;
 };

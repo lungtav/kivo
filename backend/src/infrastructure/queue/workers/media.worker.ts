@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import { redis } from "../../redis/redis.client.js";
 import {
-  findAttachmentByMessageId,
+  findAttachmentById,
   updateProcessingResult,
 } from "../../../modules/attachments/attachments.repository.js";
 export const mediaWorker = new Worker(
@@ -10,7 +10,7 @@ export const mediaWorker = new Worker(
     if (job.name !== "process-attachment") return;
 
     const { attachmentId } = job.data;
-    const attachment = await findAttachmentByMessageId(attachmentId);
+    const attachment = await findAttachmentById(attachmentId);
 
     if (!attachment) return; // nothing to process, don't retry
 
