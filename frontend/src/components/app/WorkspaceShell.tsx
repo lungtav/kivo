@@ -27,6 +27,7 @@ export type SelectedConversation = {
 
 type WorkspaceShellProps = {
   children: (props: {
+    view: "home" | "space";
     selectedSpace: Space | null;
     selectedChannel: SelectedConversation | null;
     refreshConversations: () => void;
@@ -35,6 +36,7 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [view, setView] = useState<"home" | "space">("space");
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [space, setSpace] = useState<SpaceStructure | null>(null);
@@ -82,12 +84,24 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     : [];
   const channel = channels.find((item) => item.id === selectedChannelId) ?? null;
   const direct = conversations.find((item) => item.id === selectedDirectId) ?? null;
-  const selectedChannel: SelectedConversation | null = direct
-    ? { id: direct.id, name: conversationDisplayName(direct), kind: "direct" }
+  const selectedChannel: SelectedConversation | null = view === "home"
+    ? direct
+      ? { id: direct.id, name: conversationDisplayName(direct), kind: "direct" }
+      : null
     : channel
       ? { id: channel.id, name: channel.name, kind: "channel" }
       : null;
   const selectedSpace = spaces.find((item) => item.id === selectedSpaceId) ?? null;
+
+  const selectSpace = (id: string) => {
+    setView("space");
+    setSelectedSpaceId(id);
+  };
+
+  const selectHome = () => {
+    setView("home");
+    setSelectedChannelId(null);
+  };
 
   const selectChannel = (id: string) => {
     setSelectedDirectId(null);
@@ -180,8 +194,10 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         space={space}
         selectedSpaceId={selectedSpaceId}
         selectedChannelId={selectedChannelId}
-        onSelectSpace={setSelectedSpaceId}
+        onSelectSpace={selectSpace}
         onSelectChannel={selectChannel}
+        view={view}
+        onSelectHome={selectHome}
         directMessages={conversations}
         selectedDirectId={selectedDirectId}
         onSelectDirect={selectDirect}
@@ -196,7 +212,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ selectedSpace, selectedChannel, refreshConversations })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations })}
       </section>
     </main>
   );

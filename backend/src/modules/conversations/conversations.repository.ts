@@ -163,3 +163,18 @@ export const countExistingUsers = async (userIds: string[]) => {
   );
   return result.rows[0].count as number;
 };
+
+// people you could start a DM with: everyone sharing a space with you
+export const listPeersForUser = async (userId: string) => {
+  const result = await db.query(
+    `SELECT DISTINCT u.id, u.display_name, u.username, u.avatar_url
+     FROM space_members sm
+     JOIN space_members mine
+       ON mine.space_id = sm.space_id AND mine.user_id = $1 AND mine.left_at IS NULL
+     JOIN users u ON u.id = sm.user_id
+     WHERE sm.user_id <> $1 AND sm.left_at IS NULL AND u.deleted_at IS NULL
+     ORDER BY u.display_name ASC`,
+    [userId],
+  );
+  return result.rows;
+};

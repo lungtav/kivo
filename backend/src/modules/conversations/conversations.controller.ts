@@ -42,6 +42,19 @@ export const listConversations = asyncHandler(
   },
 );
 
+export const listPeers = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const peers = await conversationsService.listPeers(userId);
+    res.status(200).json({ peers });
+  },
+);
+
 export const leaveConversation = asyncHandler(
   async (req: Request<{ conversationId: string }>, res: Response) => {
     const userId = req.user.id;

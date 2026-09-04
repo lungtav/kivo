@@ -51,6 +51,9 @@ export const createConversation = async (
 export const listConversations = (userId: string) =>
   conversationsRepository.listConversationsForUser(userId);
 
+export const listPeers = (userId: string) =>
+  conversationsRepository.listPeersForUser(userId);
+
 export const leaveConversation = async (
   conversationId: string,
   userId: string,

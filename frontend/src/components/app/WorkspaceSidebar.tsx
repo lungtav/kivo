@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, DoorOpen, Hash, LogOut, Plus, Settings, Trash2, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, DoorOpen, Hash, LogOut, MessageCircle, Plus, Settings, Trash2, Users } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import kivoLogo from "../../assets/kivo-logo.jfif";
@@ -11,11 +11,13 @@ import {
   getMe,
   kickMember,
   listInvites,
+  listPeers,
   listSpaceMembers,
   revokeInvite,
   updateProfile,
   type Channel,
   type DirectConversation,
+  type Peer,
   type Space,
   type SpaceInvite,
   type SpaceMember,
@@ -25,6 +27,7 @@ import {
 
 type Props = {
   isOpen: boolean; onToggle: () => void; spaces: Space[]; space: SpaceStructure | null;
+  view: "home" | "space"; onSelectHome: () => void;
   selectedSpaceId: string | null; selectedChannelId: string | null;
   directMessages: DirectConversation[]; selectedDirectId: string | null;
   onSelectDirect: (id: string) => void; onCreateDirect: (userId: string) => Promise<void>;
@@ -39,7 +42,7 @@ type Deleting = { kind: "space" | "category" | "channel"; id?: string; name: str
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
 export function WorkspaceSidebar(props: Props) {
-  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, directMessages, selectedDirectId, onSelectDirect } = props;
+  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect } = props;
   const [creating, setCreating] = useState<Creating>(null);
   const [deleting, setDeleting] = useState<Deleting>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -53,20 +56,27 @@ export function WorkspaceSidebar(props: Props) {
   const [joinCode, setJoinCode] = useState("");
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const [members, setMembers] = useState<SpaceMember[] | null>(null);
+  const [dmQuery, setDmQuery] = useState("");
+  const [peerQuery, setPeerQuery] = useState("");
+  const [peers, setPeers] = useState<Peer[] | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
   const canManage = space?.role === "owner" || space?.role === "admin";
   useEffect(() => { setDeleteConfirmation(""); setError(null); }, [deleting]);
   const startCreate = (kind: NonNullable<Creating>["kind"], categoryId?: string | null) => { setName(""); setError(null); setCreating({ kind, categoryId }); };
   const openMemberPicker = () => {
-    setMembers(null);
+    setPeers(null);
     setMembersError(null);
+    setPeerQuery("");
     setMemberPickerOpen(true);
-    if (!space) return;
-    void listSpaceMembers(space.id)
-      .then(({ members: items }) => setMembers(items))
-      .catch((cause) => setMembersError(cause instanceof Error ? cause.message : "Could not load members."));
+    void listPeers()
+      .then(({ peers: items }) => setPeers(items))
+      .catch((cause) => setMembersError(cause instanceof Error ? cause.message : "Could not load people."));
   };
+  const dmQueryLower = dmQuery.trim().toLowerCase();
+  const visibleConversations = dmQueryLower ? directMessages.filter((dm) => conversationDisplayName(dm).toLowerCase().includes(dmQueryLower)) : directMessages;
+  const totalUnread = directMessages.reduce((sum, dm) => sum + dm.unread_count, 0);
+  const peerQueryLower = peerQuery.trim().toLowerCase();
+  const visiblePeers = peers ? peers.filter((peer) => peer.display_name.toLowerCase().includes(peerQueryLower) || peer.username.toLowerCase().includes(peerQueryLower)) : [];
   const pickMember = async (userId: string) => {
     setBusy(true);
     setMembersError(null);
@@ -119,6 +129,7 @@ export function WorkspaceSidebar(props: Props) {
   return <aside className="flex h-full shrink-0 overflow-hidden bg-[#101014] text-stone-100">
     <nav className="flex h-full w-[72px] flex-col items-center gap-2 border-r border-white/[.06] bg-[#0b0b0e] py-3">
       <button className="mb-1 grid size-11 place-items-center rounded-xl" aria-label="Kivo home"><img src={kivoLogo} alt="" className="size-7 rounded-lg object-contain grayscale opacity-70" /></button>
+      <button onClick={() => { setMembersOpen(false); setSettingsOpen(false); onSelectHome(); }} className={`relative grid size-11 place-items-center rounded-xl border transition ${view === "home" ? "border-stone-300 bg-stone-200 text-stone-900 shadow-lg shadow-black/20" : "border-white/[.08] bg-[#17171c] text-stone-500 hover:border-white/25 hover:bg-[#202026] hover:text-stone-100"}`} aria-label="Direct messages"><MessageCircle size={19} />{totalUnread > 0 && view !== "home" && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{totalUnread > 9 ? "9+" : totalUnread}</span>}</button>
       <button onClick={onToggle} className="grid size-11 place-items-center rounded-xl text-stone-500 hover:bg-white/[.07] hover:text-stone-100" aria-label={isOpen ? "Close workspace sidebar" : "Open workspace sidebar"}>{isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}</button>
       <div className="my-1 h-px w-8 bg-white/[.08]" />
       {spaces.map((item) => <button key={item.id} title={item.name} onClick={() => { setSettingsOpen(false); onSelectSpace(item.id); }} className={`grid size-11 place-items-center rounded-xl border text-[10px] font-bold transition ${selectedSpaceId === item.id ? "border-stone-300 bg-stone-200 text-stone-900 shadow-lg shadow-black/20" : "border-white/[.08] bg-[#17171c] text-stone-500 hover:border-white/25 hover:bg-[#202026] hover:text-stone-100"}`}>{initials(item.name)}</button>)}
@@ -128,21 +139,26 @@ export function WorkspaceSidebar(props: Props) {
     </nav>
     <div className={`overflow-hidden transition-[width,opacity] duration-200 ${isOpen ? "w-80 opacity-100" : "w-0 opacity-0"}`}>
       <div className="flex h-full w-80 flex-col bg-[#121217]">
-        {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => setMembersOpen(false)} onLeaveSpace={props.onLeaveSpace} /> : <>
+        {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => setMembersOpen(false)} onLeaveSpace={props.onLeaveSpace} /> : view === "home" ? <>
+          <div className="border-b border-white/[.06] bg-[#16161b] px-5 py-4"><div className="flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">Direct messages</h2><button onClick={openMemberPicker} className="rounded-md p-1.5 text-stone-400 hover:bg-white/[.07] hover:text-stone-100" aria-label="Start a conversation"><Plus size={16} /></button></div><input value={dmQuery} onChange={(event) => setDmQuery(event.target.value)} placeholder="Find a conversation" className="mt-3 w-full rounded-lg border border-white/[.1] bg-[#101014] px-3 py-2 text-sm outline-none focus:border-stone-400" /></div>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-width:thin] [scrollbar-color:#444_#121217]">
+            {visibleConversations.length === 0 && <p className="px-2 py-4 text-sm text-stone-500">{directMessages.length === 0 ? "No conversations yet — start one with the + button above." : "No conversations match your search."}</p>}
+            {visibleConversations.map((dm) => <div key={dm.id} className={`flex items-center rounded-lg ${selectedDirectId === dm.id ? "bg-stone-200 text-stone-900" : "text-stone-500 hover:bg-white/[.07] hover:text-stone-200"}`}><button onClick={() => onSelectDirect(dm.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"><span className={`grid size-6 shrink-0 place-items-center rounded-full text-[9px] font-bold ${selectedDirectId === dm.id ? "bg-violet-500 text-white" : "bg-violet-400 text-violet-950"}`}>{initials(conversationDisplayName(dm))}</span><span className="min-w-0 flex-1 truncate">{conversationDisplayName(dm)}</span></button>{dm.unread_count > 0 && selectedDirectId !== dm.id && <span className="mr-2 grid h-4 min-w-4 place-items-center rounded-full bg-violet-500 px-1 text-[9px] font-bold text-white">{dm.unread_count > 9 ? "9+" : dm.unread_count}</span>}</div>)}
+          </div>
+        </> : <>
           <div className="border-b border-white/[.06] bg-[#16161b] px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-stone-500">Space</p><div className="mt-1 flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">{space?.name ?? "Loading…"}</h2>{canManage && <button onClick={() => setDeleting({ kind: "space", name: space?.name ?? "this space" })} className="rounded-md p-1.5 text-stone-500 hover:bg-red-400/10 hover:text-red-300" title="Delete space" aria-label="Delete space"><Trash2 size={15} /></button>}</div><div className="mt-3 flex items-center gap-2 text-xs text-stone-500"><button onClick={() => setMembersOpen(true)} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-white/[.05] hover:text-stone-200"><Users size={14} /><span>{space?.role === "member" ? "Members" : "Admin controls enabled"}</span></button></div></div>
           <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-5 [scrollbar-width:thin] [scrollbar-color:#444_#121217]">
             {creating && creating.kind !== "space" && <CreateForm creating={creating} name={name} busy={busy} error={error} onName={setName} onCancel={() => setCreating(null)} onSubmit={submitCreate} />}
             <ChannelGroup name="Uncategorised" channels={space?.uncategorized_channels ?? []} selected={selectedChannelId} canManage={canManage} onSelect={onSelectChannel} onCreate={() => startCreate("channel")} onDelete={(channel) => setDeleting({ kind: "channel", id: channel.id, name: channel.name })} />
             {space?.categories.map((category) => <ChannelGroup key={category.id} name={category.name} channels={category.channels} selected={selectedChannelId} canManage={canManage} onSelect={onSelectChannel} onCreate={() => startCreate("channel", category.id)} onDelete={(channel) => setDeleting({ kind: "channel", id: channel.id, name: channel.name })} onDeleteCategory={() => setDeleting({ kind: "category", id: category.id, name: category.name })} />)}
             {canManage && <button onClick={() => startCreate("category")} className="mt-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-stone-500 transition hover:bg-white/[.05] hover:text-stone-200"><Plus size={15} /> Add category</button>}
-            <section className="mt-5 mb-2"><div className="mb-1 flex items-center justify-between px-2"><span className="truncate text-[10px] font-bold uppercase tracking-[.16em] text-stone-600">Direct messages</span><button onClick={openMemberPicker} className="rounded p-1 text-stone-600 hover:bg-white/[.06] hover:text-stone-100" aria-label="Start a direct message"><Plus size={14} /></button></div>{directMessages.map((dm) => <div key={dm.id} className={`flex items-center rounded-lg ${selectedDirectId === dm.id ? "bg-stone-200 text-stone-900" : "text-stone-500 hover:bg-white/[.07] hover:text-stone-200"}`}><button onClick={() => onSelectDirect(dm.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"><span className={`grid size-5 shrink-0 place-items-center rounded-full text-[8px] font-bold ${selectedDirectId === dm.id ? "bg-violet-500 text-white" : "bg-violet-400 text-violet-950"}`}>{initials(conversationDisplayName(dm))}</span><span className="truncate">{conversationDisplayName(dm)}</span></button>{dm.unread_count > 0 && selectedDirectId !== dm.id && <span className="mr-2 grid h-4 min-w-4 place-items-center rounded-full bg-violet-500 px-1 text-[9px] font-bold text-white">{dm.unread_count > 9 ? "9+" : dm.unread_count}</span>}</div>)}</section>
           </div>
         </>}
       </div>
     </div>
     {creating?.kind === "space" && <Modal title="Create a space" onClose={() => setCreating(null)}><CreateForm creating={creating} name={name} busy={busy} error={error} onName={setName} onCancel={() => setCreating(null)} onSubmit={submitCreate} /></Modal>}
     {deleting && <Modal title={`Delete ${deleting.kind}`} onClose={() => setDeleting(null)}><p className="text-sm leading-6 text-stone-400">This deletes <strong className="text-stone-100">{deleting.name}</strong>. This action cannot be undone.</p><label className="mt-4 block text-xs font-medium text-stone-400">Type <strong className="text-stone-200">{deleting.name}</strong> to confirm<input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} className="mt-2 w-full rounded-lg border border-white/[.12] bg-[#101014] px-3 py-2 text-sm text-stone-100 outline-none focus:border-red-300" /></label>{error && <p className="mt-3 text-sm text-red-300">{error}</p>}<div className="mt-6 flex justify-end gap-2"><button onClick={() => setDeleting(null)} className="rounded-lg px-3 py-2 text-sm text-stone-300 hover:bg-white/[.06]">Cancel</button><button disabled={busy || deleteConfirmation !== deleting.name} onClick={() => void confirmDelete()} className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-50">{busy ? "Deleting…" : "Delete permanently"}</button></div></Modal>}
-    {memberPickerOpen && <Modal title="Start a direct message" onClose={() => setMemberPickerOpen(false)}>{membersError && <p className="text-sm text-red-300">{membersError}</p>}{members === null && !membersError && <p className="text-sm text-stone-400">Loading members…</p>}{members?.length === 0 && !membersError && <p className="text-sm text-stone-400">No members in this space yet.</p>}<div className="mt-2 max-h-64 space-y-1 overflow-y-auto">{members?.map((member) => <button key={member.user_id} onClick={() => void pickMember(member.user_id)} disabled={busy} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-stone-200 hover:bg-white/[.06] disabled:opacity-50"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-violet-400 text-[9px] font-bold text-violet-950">{initials(member.display_name)}</span><span className="min-w-0 truncate">{member.display_name}<span className="ml-1.5 text-xs text-stone-500">@{member.username}</span></span></button>)}</div></Modal>}
+    {memberPickerOpen && <Modal title="Start a direct message" onClose={() => setMemberPickerOpen(false)}><input value={peerQuery} onChange={(event) => setPeerQuery(event.target.value)} placeholder="Search people" className="w-full rounded-lg border border-white/[.1] bg-[#101014] px-3 py-2 text-sm outline-none focus:border-stone-400" />{membersError && <p className="mt-2 text-sm text-red-300">{membersError}</p>}{peers === null && !membersError && <p className="mt-2 text-sm text-stone-400">Loading people…</p>}{peers !== null && visiblePeers.length === 0 && !membersError && <p className="mt-2 text-sm text-stone-500">{peers.length === 0 ? "No one to message yet — join or create a space first." : "No one matches that search."}</p>}<div className="mt-2 max-h-64 space-y-1 overflow-y-auto">{visiblePeers.map((peer) => <button key={peer.id} onClick={() => void pickMember(peer.id)} disabled={busy} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-stone-200 hover:bg-white/[.06] disabled:opacity-50"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-violet-400 text-[9px] font-bold text-violet-950">{initials(peer.display_name)}</span><span className="min-w-0 truncate">{peer.display_name}<span className="ml-1.5 text-xs text-stone-500">@{peer.username}</span></span></button>)}</div></Modal>}
     {joinOpen && <Modal title="Join a space" onClose={() => setJoinOpen(false)}><form onSubmit={submitJoin}><label className="block text-xs font-semibold text-stone-200">Invite code</label><input autoFocus value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="e.g. a1b2c3d4" className="mt-2 w-full rounded-lg border border-white/[.1] bg-[#101014] px-3 py-2 text-sm outline-none focus:border-stone-400" />{joinError && <p className="mt-2 text-xs text-red-300">{joinError}</p>}<div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setJoinOpen(false)} className="rounded-lg px-3 py-2 text-xs text-stone-400 hover:bg-white/[.06]">Cancel</button><button disabled={!joinCode.trim() || joinBusy} className="rounded-lg bg-stone-200 px-3 py-2 text-xs font-semibold text-stone-900 hover:bg-white disabled:opacity-50">{joinBusy ? "Joining…" : "Join space"}</button></div></form></Modal>}
   </aside>;
 }

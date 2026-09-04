@@ -69,6 +69,13 @@ export type SpaceInvite = {
   created_at: string;
 };
 
+export type Peer = {
+  id: string;
+  display_name: string;
+  username: string;
+  avatar_url: string | null;
+};
+
 export const conversationDisplayName = (conversation: DirectConversation) =>
   conversation.type === "dm"
     ? conversation.peer_display_name ?? conversation.peer_username ?? "Unknown user"
@@ -114,4 +121,5 @@ export type UserProfile = {
 export const getMe = () => apiRequest<{ user: UserProfile }>("/api/me");
 export const updateProfile = (input: { display_name?: string; username?: string; avatar_url?: string }) => apiRequest<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(input) });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
+export const listPeers = () => apiRequest<{ peers: Peer[] }>("/api/conversations/peers");
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });
