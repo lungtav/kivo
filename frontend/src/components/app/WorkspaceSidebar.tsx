@@ -5,7 +5,9 @@ import kivoLogo from "../../assets/kivo-logo.jfif";
 import { logout } from "../../lib/auth";
 import { getRealtimeSocket } from "../../lib/realtime";
 import {
+  changeMemberRole,
   conversationDisplayName,
+  kickMember,
   listSpaceMembers,
   type Channel,
   type DirectConversation,
@@ -23,6 +25,7 @@ type Props = {
   onCreateCategory: (name: string) => Promise<void>; onCreateChannel: (name: string, categoryId: string | null) => Promise<void>;
   onCreateSpace: (name: string) => Promise<void>; onDeleteChannel: (id: string) => Promise<void>;
   onDeleteCategory: (id: string) => Promise<void>; onDeleteSpace: () => Promise<void>;
+  onLeaveSpace: () => Promise<void>;
 };
 type Creating = { kind: "space" | "category" | "channel"; categoryId?: string | null } | null;
 type Deleting = { kind: "space" | "category" | "channel"; id?: string; name: string } | null;
@@ -38,6 +41,7 @@ export function WorkspaceSidebar(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [memberPickerOpen, setMemberPickerOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [members, setMembers] = useState<SpaceMember[] | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
   const canManage = space?.role === "owner" || space?.role === "admin";
@@ -97,8 +101,8 @@ export function WorkspaceSidebar(props: Props) {
     </nav>
     <div className={`overflow-hidden transition-[width,opacity] duration-200 ${isOpen ? "w-80 opacity-100" : "w-0 opacity-0"}`}>
       <div className="flex h-full w-80 flex-col bg-[#121217]">
-        {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : <>
-          <div className="border-b border-white/[.06] bg-[#16161b] px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-stone-500">Space</p><div className="mt-1 flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">{space?.name ?? "Loading…"}</h2>{canManage && <button onClick={() => setDeleting({ kind: "space", name: space?.name ?? "this space" })} className="rounded-md p-1.5 text-stone-500 hover:bg-red-400/10 hover:text-red-300" title="Delete space" aria-label="Delete space"><Trash2 size={15} /></button>}</div><div className="mt-3 flex items-center gap-2 text-xs text-stone-500"><Users size={14} /><span>{space?.role === "member" ? "Member" : "Admin controls enabled"}</span></div></div>
+        {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => setMembersOpen(false)} onLeaveSpace={props.onLeaveSpace} /> : <>
+          <div className="border-b border-white/[.06] bg-[#16161b] px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-stone-500">Space</p><div className="mt-1 flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">{space?.name ?? "Loading…"}</h2>{canManage && <button onClick={() => setDeleting({ kind: "space", name: space?.name ?? "this space" })} className="rounded-md p-1.5 text-stone-500 hover:bg-red-400/10 hover:text-red-300" title="Delete space" aria-label="Delete space"><Trash2 size={15} /></button>}</div><div className="mt-3 flex items-center gap-2 text-xs text-stone-500"><button onClick={() => setMembersOpen(true)} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-white/[.05] hover:text-stone-200"><Users size={14} /><span>{space?.role === "member" ? "Members" : "Admin controls enabled"}</span></button></div></div>
           <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-5 [scrollbar-width:thin] [scrollbar-color:#444_#121217]">
             {creating && creating.kind !== "space" && <CreateForm creating={creating} name={name} busy={busy} error={error} onName={setName} onCancel={() => setCreating(null)} onSubmit={submitCreate} />}
             <ChannelGroup name="Uncategorised" channels={space?.uncategorized_channels ?? []} selected={selectedChannelId} canManage={canManage} onSelect={onSelectChannel} onCreate={() => startCreate("channel")} onDelete={(channel) => setDeleting({ kind: "channel", id: channel.id, name: channel.name })} />
@@ -126,6 +130,56 @@ function CreateForm({ creating, name, busy, error, onName, onCancel, onSubmit }:
 }
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) { return <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-5" role="dialog" aria-modal="true" aria-label={title} onMouseDown={onClose}><div className="w-full max-w-sm rounded-2xl border border-white/[.12] bg-[#17171b] p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><h3 className="text-base font-semibold">{title}</h3><div className="mt-4">{children}</div></div></div>; }
+
+function MembersPanel({ spaceId, canManage, ownRole, onBack, onLeaveSpace }: { spaceId: string | null; canManage: boolean; ownRole: "owner" | "admin" | "member" | null; onBack: () => void; onLeaveSpace: () => Promise<void> }) {
+  const [members, setMembers] = useState<SpaceMember[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = () => {
+    if (!spaceId) return;
+    void listSpaceMembers(spaceId)
+      .then(({ members: items }) => setMembers(items))
+      .catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load members."));
+  };
+  useEffect(load, [spaceId]);
+  const setRole = async (userId: string, role: "admin" | "member") => {
+    if (!spaceId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await changeMemberRole(spaceId, userId, role);
+      load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not update the member.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const kick = async (userId: string) => {
+    if (!spaceId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await kickMember(spaceId, userId);
+      load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not remove the member.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const leave = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await onLeaveSpace();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not leave this space.");
+      setBusy(false);
+    }
+  };
+  return <div className="flex h-full flex-col"><div className="border-b border-white/[.06] px-5 py-4"><button onClick={onBack} className="text-xs font-semibold text-stone-400 hover:text-white">← Back to space</button><h2 className="mt-2 text-base font-semibold">Members</h2></div>{error && <p className="mx-5 mt-3 text-sm text-red-300">{error}</p>}<div className="flex-1 space-y-1 overflow-y-auto p-5 text-sm">{members === null && !error && <p className="text-stone-400">Loading members…</p>}{members?.map((member) => <div key={member.user_id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-2 hover:bg-white/[.04]"><div className="flex min-w-0 items-center gap-2"><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-violet-400 text-[9px] font-bold text-violet-950">{initials(member.display_name)}</span><div className="min-w-0"><p className="truncate text-sm text-stone-100">{member.display_name}</p><p className="truncate text-xs text-stone-500">@{member.username} · {member.role}</p></div></div>{canManage && member.role !== "owner" && <div className="flex shrink-0 items-center gap-1"><select value={member.role} disabled={busy} onChange={(event) => void setRole(member.user_id, event.target.value as "admin" | "member")} className="rounded-md border border-white/[.12] bg-[#101014] px-1.5 py-1 text-xs text-stone-200 outline-none"><option value="member">member</option><option value="admin">admin</option></select><button disabled={busy} onClick={() => void kick(member.user_id)} className="rounded-md p-1.5 text-stone-500 hover:bg-red-400/10 hover:text-red-300" aria-label={`Remove ${member.display_name}`}><Trash2 size={13} /></button></div>}</div>)}</div>{ownRole && ownRole !== "owner" && <div className="border-t border-white/[.06] p-5"><button disabled={busy} onClick={() => void leave()} className="w-full rounded-lg border border-red-400/30 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-400/10 disabled:opacity-50">Leave this space</button></div>}</div>;
+}
 function SettingsPanel({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);

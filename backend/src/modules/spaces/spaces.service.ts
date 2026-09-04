@@ -72,6 +72,62 @@ export const listMembers = async (spaceId: string, userId: string) => {
   return spacesRepository.listSpaceMembers(spaceId);
 };
 
+export const changeMemberRole = async (
+  spaceId: string,
+  actorId: string,
+  targetUserId: string,
+  role: "admin" | "member",
+) => {
+  const membership = await spacesRepository.getMembership(spaceId, actorId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can manage members");
+  }
+  const target = await spacesRepository.getMembership(spaceId, targetUserId);
+  if (!target) {
+    throw new NotFoundError("member not found");
+  }
+  if (target.role === "owner") {
+    throw new ForbiddenError("the space owner's role cannot be changed");
+  }
+  return spacesRepository.updateMemberRole(spaceId, targetUserId, role);
+};
+
+export const kickMember = async (
+  spaceId: string,
+  actorId: string,
+  targetUserId: string,
+) => {
+  const membership = await spacesRepository.getMembership(spaceId, actorId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ForbiddenError("only owners and admins can remove members");
+  }
+  const target = await spacesRepository.getMembership(spaceId, targetUserId);
+  if (!target) {
+    throw new NotFoundError("member not found");
+  }
+  if (target.role === "owner") {
+    throw new ForbiddenError("the space owner cannot be removed");
+  }
+  await spacesRepository.removeMember(spaceId, targetUserId);
+};
+
+export const leaveSpace = async (spaceId: string, userId: string) => {
+  const membership = await spacesRepository.getMembership(spaceId, userId);
+  if (!membership) {
+    throw new NotFoundError("space not found");
+  }
+  if (membership.role === "owner") {
+    throw new ForbiddenError("owners cannot leave their space — delete it instead");
+  }
+  await spacesRepository.removeMember(spaceId, userId);
+};
+
 export const getSpace = async (spaceId: string, userId: string) => {
   const membership = await spacesRepository.getMembership(spaceId, userId);
   if (!membership) {

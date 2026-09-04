@@ -81,6 +81,58 @@ export const listSpaceMembers = asyncHandler(
   },
 );
 
+export const changeMemberRole = asyncHandler(
+  async (
+    req: Request<{ spaceId: string; userId: string }, {}, { role: "admin" | "member" }>,
+    res: Response,
+  ) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const parsedRole = req.body?.role;
+    if (parsedRole !== "admin" && parsedRole !== "member") {
+      throw new ValidationError("role must be admin or member");
+    }
+
+    const member = await spacesService.changeMemberRole(
+      req.params.spaceId,
+      userId,
+      req.params.userId,
+      parsedRole,
+    );
+    res.status(200).json({ message: "member role updated", member });
+  },
+);
+
+export const kickMember = asyncHandler(
+  async (req: Request<{ spaceId: string; userId: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    await spacesService.kickMember(req.params.spaceId, userId, req.params.userId);
+    res.status(200).json({ message: "member removed" });
+  },
+);
+
+export const leaveSpace = asyncHandler(
+  async (req: Request<{ spaceId: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    await spacesService.leaveSpace(req.params.spaceId, userId);
+    res.status(200).json({ message: "space left" });
+  },
+);
+
 export const getSpace = asyncHandler(
   async (req: Request<{ spaceId: string }>, res: Response) => {
     const userId = req.user.id;

@@ -73,6 +73,30 @@ export const listSpaceMembers = async (spaceId: string) => {
   return result.rows;
 };
 
+export const updateMemberRole = async (
+  spaceId: string,
+  userId: string,
+  role: "admin" | "member",
+) => {
+  const result = await db.query(
+    `UPDATE space_members SET role = $3
+     WHERE space_id = $1 AND user_id = $2 AND left_at IS NULL
+     RETURNING user_id, role`,
+    [spaceId, userId, role],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const removeMember = async (spaceId: string, userId: string) => {
+  const result = await db.query(
+    `UPDATE space_members SET left_at = NOW()
+     WHERE space_id = $1 AND user_id = $2 AND left_at IS NULL
+     RETURNING user_id`,
+    [spaceId, userId],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const updateSpace = async (
   id: string,
   fields: { name?: string; avatar_url?: string; bio?: string },

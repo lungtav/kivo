@@ -5,6 +5,9 @@ import {
   deleteSpace,
   listSpaces,
   listSpaceMembers,
+  changeMemberRole,
+  kickMember,
+  leaveSpace,
   getSpace,
 } from "../modules/spaces/spaces.controller.js";
 import {
@@ -22,6 +25,9 @@ spacesRouter.delete("/:spaceId", deleteSpace);
 spacesRouter.get("/", listSpaces);
 spacesRouter.get("/:spaceId", getSpace);
 spacesRouter.get("/:spaceId/members", listSpaceMembers);
+spacesRouter.patch("/:spaceId/members/:userId", changeMemberRole);
+spacesRouter.delete("/:spaceId/members/:userId", kickMember);
+spacesRouter.post("/:spaceId/leave", leaveSpace);
 
 //invites
 spacesRouter.post("/:spaceId/invites", createInvite);

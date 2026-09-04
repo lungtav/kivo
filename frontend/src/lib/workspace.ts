@@ -82,5 +82,8 @@ export const deleteSpace = (spaceId: string) => apiRequest<void>(`/api/spaces/${
 export const deleteCategory = (categoryId: string) => apiRequest<void>(`/api/spaces/categories/${categoryId}`, { method: "DELETE" });
 export const deleteChannel = (channelId: string) => apiRequest<void>(`/api/channel/${channelId}`, { method: "DELETE" });
 export const listSpaceMembers = (spaceId: string) => apiRequest<{ members: SpaceMember[] }>(`/api/spaces/${spaceId}/members`);
+export const changeMemberRole = (spaceId: string, userId: string, role: "admin" | "member") => apiRequest<{ member: SpaceMember }>(`/api/spaces/${spaceId}/members/${userId}`, { method: "PATCH", body: JSON.stringify({ role }) });
+export const kickMember = (spaceId: string, userId: string) => apiRequest<void>(`/api/spaces/${spaceId}/members/${userId}`, { method: "DELETE" });
+export const leaveSpace = (spaceId: string) => apiRequest<void>(`/api/spaces/${spaceId}/leave`, { method: "POST" });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });

@@ -12,6 +12,7 @@ import {
   deleteCategory,
   deleteChannel,
   deleteSpace,
+  leaveSpace,
   type DirectConversation,
   type Space,
   type SpaceStructure,
@@ -147,6 +148,14 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setSelectedSpaceId(updatedSpaces[0]?.id ?? null);
   };
 
+  const leaveCurrentSpace = async () => {
+    if (!selectedSpaceId) return;
+    await leaveSpace(selectedSpaceId);
+    const { spaces: updatedSpaces } = await listSpaces();
+    setSpaces(updatedSpaces);
+    setSelectedSpaceId(updatedSpaces[0]?.id ?? null);
+  };
+
   return (
     <main className="flex h-svh overflow-hidden bg-[#17171b]">
       <WorkspaceSidebar
@@ -168,6 +177,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onDeleteChannel={removeChannel}
         onDeleteCategory={removeCategory}
         onDeleteSpace={removeSpace}
+        onLeaveSpace={leaveCurrentSpace}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {children({ selectedSpace, selectedChannel })}
