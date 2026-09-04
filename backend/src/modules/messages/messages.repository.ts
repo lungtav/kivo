@@ -180,7 +180,8 @@ export const getMessages = async (
         m.conversation_id,
         m.sender_id,
         m.type,
-        m.content,
+        -- deleted messages stay in history as content-less tombstones
+        CASE WHEN m.deleted_at IS NULL THEN m.content END AS content,
         m.reply_to_id,
         m.created_at,
         m.edited_at,
@@ -215,7 +216,7 @@ export const getMessages = async (
         ON u.id = m.sender_id
 
       LEFT JOIN message_attachments a
-        ON a.message_id = m.id
+        ON a.message_id = m.id AND m.deleted_at IS NULL
 
       LEFT JOIN messages r
         ON r.id = m.reply_to_id
@@ -224,7 +225,6 @@ export const getMessages = async (
         ON ru.id = r.sender_id
 
       WHERE m.conversation_id = $1
-        AND m.deleted_at IS NULL
         ${cursorCondition}
 
       GROUP BY m.id, u.display_name, u.username, r.id, ru.id

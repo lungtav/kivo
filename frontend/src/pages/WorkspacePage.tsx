@@ -37,6 +37,7 @@ const toMessage = (message: ApiMessage): Message => {
   const timestamp = isSameDay(sentAt, new Date())
     ? new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(sentAt)
     : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(sentAt);
+  const deleted = !!message.deleted_at;
   return {
     id: message.id,
     author,
@@ -46,15 +47,16 @@ const toMessage = (message: ApiMessage): Message => {
     accent: "violet",
     isOwn: message.sender_id === currentUserId(),
     sentAt,
-    edited: !!message.edited_at,
-    attachments: message.attachments?.map(({ id, mediaType, mimeType }) => ({ id, mediaType, mimeType })),
-    replyTo: replyTo ? {
+    edited: !!message.edited_at && !deleted,
+    deleted,
+    attachments: deleted ? undefined : message.attachments?.map(({ id, mediaType, mimeType }) => ({ id, mediaType, mimeType })),
+    replyTo: deleted || !replyTo ? undefined : {
       id: replyTo.id,
       author: replyTo.author ?? "Unknown user",
       body: replyTo.isDeleted
         ? "Original message was deleted"
         : replyTo.content ?? (replyTo.type === "media" ? "Sent an attachment" : "Message"),
-    } : undefined,
+    },
   };
 };
 
@@ -125,6 +127,8 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations }: { vie
 
   const appendMessage = (message: ApiMessage) => setMessages((current) => current.some((existing) => existing.id === message.id) ? current : [...current, toMessage(message)]);
 
+  const markDeleted = (messageId: string) => setMessages((current) => current.map((existing) => existing.id === messageId ? { ...existing, deleted: true, body: "", attachments: undefined, replyTo: undefined } : existing));
+
   const loadOlder = async () => {
     if (!selectedChannel || !nextCursor || loadingOlder) return;
     setLoadingOlder(true);
@@ -164,7 +168,7 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations }: { vie
     };
     const onMessageDelete = (payload: { conversationId: string; messageId: string }) => {
       if (payload.conversationId !== conversationId) return;
-      setMessages((current) => current.filter((existing) => existing.id !== payload.messageId));
+      markDeleted(payload.messageId);
     };
     const onTyping = (payload: { userId: string; conversationId: string; user: { displayName: string; avatarUrl: string | null }; isTyping: boolean }) => {
       if (payload.conversationId !== conversationId || payload.userId === currentUserId()) return;
@@ -217,7 +221,7 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations }: { vie
 
   const handleDelete = async (messageId: string) => {
     await deleteMessage(messageId);
-    setMessages((current) => current.filter((existing) => existing.id !== messageId));
+    markDeleted(messageId);
   };
 
   const handleTyping = useCallback((typing: boolean) => {

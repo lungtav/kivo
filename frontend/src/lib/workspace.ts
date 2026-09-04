@@ -51,6 +51,7 @@ export type ApiMessage = {
   sender_id: string;
   sender_display_name: string | null;
   sender_username: string | null;
+  deleted_at?: string | null;
   reply_to?: MessageReply | null;
   attachments?: MessageAttachment[];
 };

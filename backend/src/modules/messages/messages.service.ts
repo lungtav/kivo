@@ -36,7 +36,7 @@ export const sendMessage = async (
 
   if (input.replyToId) {
     const original = await messagesRepository.findMessageById(input.replyToId);
-    if (!original || original.conversation_id !== conversationId) {
+    if (!original || original.conversation_id !== conversationId || original.deleted_at) {
       throw new ValidationError(
         "reply target does not belong to this conversation",
       );
