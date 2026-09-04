@@ -32,6 +32,34 @@ export const sharesSpaceWith = async (userId: string, targetUserId: string) => {
   return result.rows.length > 0;
 };
 
+export const sharesConversationWith = async (userId: string, targetUserId: string) => {
+  const result = await db.query(
+    `SELECT 1
+     FROM conversation_members mine
+     JOIN conversation_members theirs
+       ON theirs.conversation_id = mine.conversation_id AND theirs.user_id = $2 AND theirs.left_at IS NULL
+     WHERE mine.user_id = $1 AND mine.left_at IS NULL
+     LIMIT 1`,
+    [userId, targetUserId],
+  );
+  return result.rows.length > 0;
+};
+
+export const searchUsersByName = async (excludeUserId: string, query: string) => {
+  const pattern = `%${query}%`;
+  const result = await db.query(
+    `SELECT id, display_name, username, avatar_url
+     FROM users
+     WHERE deleted_at IS NULL
+       AND id <> $1
+       AND (username ILIKE $2 OR display_name ILIKE $2)
+     ORDER BY username
+     LIMIT 10`,
+    [excludeUserId, pattern],
+  );
+  return result.rows;
+};
+
 export const updateProfile = async (
   userId: string,
   fields: { display_name?: string; username?: string; avatar_url?: string; bio?: string | null },

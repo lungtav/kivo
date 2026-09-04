@@ -38,6 +38,19 @@ export const getUserProfile = asyncHandler(
   },
 );
 
+export const searchUsers = asyncHandler(
+  async (req: Request<{}, {}, {}, { q?: string }>, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const peers = await usersService.searchUsers(userId, req.query.q ?? "");
+    res.status(200).json({ peers });
+  },
+);
+
 export const updateMe = asyncHandler(
   async (req: Request<{}, {}, UpdateProfileInput>, res: Response) => {
     const userId = req.user.id;

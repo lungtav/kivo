@@ -15,10 +15,14 @@ export const getProfile = async (userId: string) => {
 };
 
 export const getPublicProfile = async (requesterId: string, targetUserId: string) => {
-  // profiles are visible to yourself and to people who share a space with you
+  // profiles are visible to yourself, people you share a space with, and people you already talk to
   const isSelf = requesterId === targetUserId;
-  if (!isSelf && !(await usersRepository.sharesSpaceWith(requesterId, targetUserId))) {
-    throw new NotFoundError("user not found");
+  if (!isSelf) {
+    const connected = (await usersRepository.sharesSpaceWith(requesterId, targetUserId))
+      || (await usersRepository.sharesConversationWith(requesterId, targetUserId));
+    if (!connected) {
+      throw new NotFoundError("user not found");
+    }
   }
 
   const profile = await usersRepository.findProfileById(targetUserId);
@@ -40,6 +44,18 @@ export const getPublicProfile = async (requesterId: string, targetUserId: string
     commonGroups,
     directConversationId: direct?.id ?? null,
   };
+};
+
+const LIKE_WILDCARDS = /[%_]/g;
+
+export const searchUsers = async (requesterId: string, query: string) => {
+  const trimmed = query.trim();
+  // keep short queries from becoming a full user directory
+  if (trimmed.length < 2) {
+    return [];
+  }
+  const safe = trimmed.replace(LIKE_WILDCARDS, (char) => `\\${char}`);
+  return usersRepository.searchUsersByName(requesterId, safe);
 };
 
 export const updateProfile = async (userId: string, input: UpdateProfileInput) => {

@@ -170,4 +170,5 @@ export const getProfile = (userId: string) => apiRequest<ProfilePayload>(`/api/u
 export const updateProfile = (input: { display_name?: string; username?: string; avatar_url?: string; bio?: string }) => apiRequest<{ user: UserProfile }>("/api/me", { method: "PATCH", body: JSON.stringify(input) });
 export const listConversations = () => apiRequest<{ conversations: DirectConversation[] }>("/api/conversations");
 export const listPeers = () => apiRequest<{ peers: Peer[] }>("/api/conversations/peers");
+export const searchUsers = (query: string) => apiRequest<{ peers: Peer[] }>(`/api/users/search?q=${encodeURIComponent(query)}`);
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });
