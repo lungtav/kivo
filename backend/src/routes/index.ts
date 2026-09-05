@@ -7,6 +7,7 @@ import { channelsRouter } from "./channels.routes.js";
 import { attachmentsRouter } from "./attachments.routes.js";
 import { conversationsRouter } from "./conversations.routes.js";
 import { meRouter, usersRouter } from "./users.routes.js";
+import { callsRouter } from "./calls.routes.js";
 
 const appRouter = Router();
 
@@ -22,5 +23,6 @@ appRouter.use("/attachments", authMiddleware, attachmentsRouter);
 appRouter.use("/conversations", authMiddleware, conversationsRouter);
 appRouter.use("/me", authMiddleware, meRouter);
 appRouter.use("/users", authMiddleware, usersRouter);
+appRouter.use("/calls", authMiddleware, callsRouter);
 
 export { appRouter };

@@ -30,8 +30,52 @@ export function CallOverlay() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const peerRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const ringTimerRef = useRef<number | null>(null);
+
+  // synthesized ringing — no audio assets needed
+  const stopRinging = () => {
+    if (ringTimerRef.current) window.clearInterval(ringTimerRef.current);
+    ringTimerRef.current = null;
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+  };
+
+  const startRinging = (kind: "in" | "out") => {
+    stopRinging();
+    try {
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+      const beep = (at: number, dur: number) => {
+        const gain = ctx.createGain();
+        gain.gain.value = 0.05;
+        gain.connect(ctx.destination);
+        [440, 480].forEach((freq) => {
+          const osc = ctx.createOscillator();
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          osc.start(ctx.currentTime + at);
+          osc.stop(ctx.currentTime + at + dur);
+        });
+      };
+      if (kind === "in") {
+        // classic double-burst ringtone
+        const pattern = () => { beep(0, 0.35); beep(0.55, 0.35); };
+        pattern();
+        ringTimerRef.current = window.setInterval(pattern, 4_000);
+      } else {
+        // single ringback tone
+        const pattern = () => beep(0, 1.4);
+        pattern();
+        ringTimerRef.current = window.setInterval(pattern, 4_000);
+      }
+    } catch {
+      // audio output unavailable — silent
+    }
+  };
 
   const cleanup = () => {
+    stopRinging();
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
     pcRef.current?.close();
@@ -238,6 +282,12 @@ export function CallOverlay() {
     track.enabled = cameraOff;
     setCameraOff(!cameraOff);
   };
+
+  useEffect(() => {
+    if (call && call.status === "ringing") startRinging(call.direction);
+    else stopRinging();
+    return stopRinging;
+  }, [call?.status, call?.direction]);
 
   if (!call) return null;
 

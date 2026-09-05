@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import * as presenceRepository from "./presence.repository.js";
 import * as messagesRepository from "../../modules/messages/messages.repository.js";
 import * as conversationsRepository from "../../modules/conversations/conversations.repository.js";
+import * as callLogsRepository from "../../modules/calls/call-logs.repository.js";
 import * as messagesService from "../../modules/messages/messages.service.js";
 
 export const createSocketServer = (httpServer: HttpServer) => {
@@ -47,14 +48,28 @@ export const createSocketServer = (httpServer: HttpServer) => {
     socket.on("call:ring", async (payload: { toUserId?: string; video?: boolean }) => {
       const to = payload?.toUserId;
       if (!to || !(await canCall(to))) return;
+      const dm = await conversationsRepository.findDirectConversation(userId, to);
+      if (!dm) return;
+      await callLogsRepository.createCallLog(dm.id, userId, to);
       const caller = await messagesRepository.getUserProfile(userId);
       relayTo(to, "call:incoming", { fromUserId: userId, from: caller, video: !!payload.video });
     });
-    socket.on("call:accept", (payload: { toUserId?: string }) => {
-      if (payload?.toUserId) relayTo(payload.toUserId, "call:accepted", {});
+    socket.on("call:accept", async (payload: { toUserId?: string }) => {
+      const to = payload?.toUserId;
+      if (!to) return;
+      const dm = await conversationsRepository.findDirectConversation(userId, to);
+      if (dm) await callLogsRepository.markAnswered(dm.id);
+      relayTo(to, "call:accepted", {});
     });
-    socket.on("call:decline", (payload: { toUserId?: string }) => {
-      if (payload?.toUserId) relayTo(payload.toUserId, "call:declined", {});
+    socket.on("call:decline", async (payload: { toUserId?: string }) => {
+      const to = payload?.toUserId;
+      if (!to) return;
+      const dm = await conversationsRepository.findDirectConversation(userId, to);
+      if (dm) {
+        const log = await callLogsRepository.markDeclined(dm.id);
+        if (log) io.to(`conversation:${dm.id}`).emit("call:log", { log });
+      }
+      relayTo(to, "call:declined", {});
     });
     socket.on("call:offer", (payload: { toUserId?: string; sdp?: unknown }) => {
       if (payload?.toUserId && payload.sdp) relayTo(payload.toUserId, "call:offer", { sdp: payload.sdp });
@@ -65,8 +80,14 @@ export const createSocketServer = (httpServer: HttpServer) => {
     socket.on("call:ice", (payload: { toUserId?: string; candidate?: unknown }) => {
       if (payload?.toUserId && payload.candidate) relayTo(payload.toUserId, "call:ice", { candidate: payload.candidate });
     });
-    socket.on("call:end", (payload: { toUserId?: string }) => {
-      if (payload?.toUserId) relayTo(payload.toUserId, "call:ended", {});
+    socket.on("call:end", async (payload: { toUserId?: string }) => {
+      const to = payload?.toUserId;
+      if (!to) return;
+      const dm = await conversationsRepository.findDirectConversation(userId, to);
+      if (!dm) return;
+      const log = await callLogsRepository.endActiveCall(dm.id, userId);
+      if (log) io.to(`conversation:${dm.id}`).emit("call:log", { log });
+      relayTo(to, "call:ended", {});
     });
 
     //refresh connection

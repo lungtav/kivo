@@ -119,6 +119,21 @@ export const uploadToStorage = async (uploadUrl: string, file: File) => {
 export const getAttachmentReadUrl = (attachmentId: string) => apiRequest<{ readUrl: string }>(`/api/attachments/${attachmentId}/url`);
 export const editMessage = (messageId: string, content: string) => apiRequest<{ messageUpdated: ApiMessage }>(`/api/messages/${messageId}`, { method: "PATCH", body: JSON.stringify({ content }) });
 export const deleteMessage = (messageId: string) => apiRequest<void>(`/api/messages/${messageId}`, { method: "DELETE" });
+export type CallLog = {
+  id: string;
+  conversation_id: string;
+  caller_id: string;
+  callee_id: string;
+  status: "ringing" | "answered" | "declined" | "no_answer" | "cancelled";
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+  caller_display_name?: string;
+  caller_username?: string;
+};
+
+export const getCallLogs = (conversationId: string) => apiRequest<{ calls: CallLog[] }>(`/api/calls/${conversationId}`);
+
 export const markConversationRead = (conversationId: string) => apiRequest<void>(`/api/messages/${conversationId}/read`, { method: "POST" });
 export const searchMessages = (conversationId: string, query: string) => apiRequest<{ results: { id: string; conversation_id: string; content: string | null; created_at: string; sender_display_name: string | null; sender_username: string | null }[] }>(`/api/messages/${conversationId}/search?q=${encodeURIComponent(query)}`);
 export const joinChannel = (channelId: string) => apiRequest<{ message: string }>(`/api/channel/${channelId}/join`, { method: "POST" });
