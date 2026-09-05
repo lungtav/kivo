@@ -172,7 +172,7 @@ export function WorkspaceSidebar(props: Props) {
     }
   };
 
-  return <aside className="flex h-full shrink-0 overflow-hidden bg-background text-foreground">
+  return <aside className="relative flex h-full shrink-0 overflow-hidden bg-background text-foreground">
     <nav className="flex h-full w-[72px] flex-col items-center gap-2 border-r border-border bg-muted py-3">
       <button onClick={() => { onMembersOpenChange(false); setSettingsOpen(false); onSelectHome(); }} className={`relative grid size-11 place-items-center rounded-xl border transition ${view === "home" ? "border-transparent bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:text-foreground"}`} aria-label="Direct messages"><MessageCircle size={19} />{totalUnread > 0 && view !== "home" && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-muted">{totalUnread > 9 ? "9+" : totalUnread}</span>}</button>
       <button onClick={onToggle} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label={isOpen ? "Close workspace sidebar" : "Open workspace sidebar"}>{isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}</button>
@@ -182,7 +182,8 @@ export function WorkspaceSidebar(props: Props) {
       <button onClick={() => { setJoinError(null); setJoinOpen(true); }} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Join a space with an invite code"><DoorOpen size={19} /></button>
       <button onClick={() => setSettingsOpen(true)} className="mt-auto grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Settings"><Settings size={19} /></button>
     </nav>
-    <div className={`overflow-hidden transition-[width,opacity] duration-200 ${isOpen ? "w-80 opacity-100" : "w-0 opacity-0"}`}>
+    {isOpen && <div className="fixed inset-0 z-20 bg-black/40 md:hidden" onClick={onToggle} aria-hidden="true" />}
+    <div className={`absolute inset-y-0 left-[72px] z-30 overflow-hidden transition-[width,opacity] duration-200 md:static md:z-auto ${isOpen ? "w-80 opacity-100 shadow-2xl md:shadow-none" : "w-0 opacity-0"}`}>
       <div className="flex h-full w-80 flex-col bg-secondary">
         {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => onMembersOpenChange(false)} onLeaveSpace={props.onLeaveSpace} onViewProfile={viewProfile} presence={presence} /> : view === "home" ? <>
           <div className="border-b border-border bg-card px-5 py-4"><div className="flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">Direct messages</h2><button onClick={openMemberPicker} className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Start a conversation"><Plus size={16} /></button></div><input value={dmQuery} onChange={(event) => setDmQuery(event.target.value)} placeholder="Find a conversation" className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /></div>

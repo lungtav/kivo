@@ -48,7 +48,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const navigate = useNavigate();
   // deep-link handoff from the profile page: open a specific space or conversation once
   const pendingState = location.state as { spaceId?: string; conversationId?: string } | null;
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
   const [view, setView] = useState<"home" | "space">("space");
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
