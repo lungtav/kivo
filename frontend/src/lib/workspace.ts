@@ -173,3 +173,4 @@ export const listConversations = () => apiRequest<{ conversations: DirectConvers
 export const listPeers = () => apiRequest<{ peers: Peer[] }>("/api/conversations/peers");
 export const searchUsers = (query: string) => apiRequest<{ peers: Peer[] }>(`/api/users/search?q=${encodeURIComponent(query)}`);
 export const createDirectMessage = (userId: string) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "dm", userId }) });
+export const createGroupConversation = (name: string, memberIds: string[]) => apiRequest<{ conversation: DirectConversation }>("/api/conversations", { method: "POST", body: JSON.stringify({ type: "group_dm", name, memberIds }) });

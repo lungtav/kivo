@@ -7,6 +7,7 @@ import {
   listSpaces,
   listConversations,
   createDirectMessage,
+  createGroupConversation,
   createCategory,
   createChannel,
   createSpace,
@@ -187,6 +188,14 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setSelectedSpaceId(newSpace.id);
   };
 
+  const createGroup = async (name: string, memberIds: string[]) => {
+    const { conversation } = await createGroupConversation(name, memberIds);
+    setConversations((items) => [conversation, ...items.filter((item) => item.id !== conversation.id)]);
+    setSelectedDirectId(conversation.id);
+    setSelectedChannelId(null);
+    setView("home");
+  };
+
   const addDirect = async (userId: string) => {
     const { conversation } = await createDirectMessage(userId);
     setConversations((items) => [conversation, ...items.filter((item) => item.id !== conversation.id)]);
@@ -282,6 +291,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         selectedDirectId={selectedDirectId}
         onSelectDirect={selectDirect}
         onCreateDirect={addDirect}
+        onCreateGroup={createGroup}
         onCreateCategory={addCategory}
         onCreateChannel={addChannel}
         onCreateSpace={addSpace}

@@ -33,6 +33,7 @@ type Props = {
   presence: Record<string, boolean>;
   directMessages: DirectConversation[]; selectedDirectId: string | null;
   onSelectDirect: (id: string) => void; onCreateDirect: (userId: string) => Promise<void>;
+  onCreateGroup: (name: string, memberIds: string[]) => Promise<void>;
   onSelectSpace: (id: string) => void; onSelectChannel: (id: string) => void;
   onCreateCategory: (name: string) => Promise<void>; onCreateChannel: (name: string, categoryId: string | null) => Promise<void>;
   onCreateSpace: (name: string) => Promise<void>; onDeleteChannel: (id: string) => Promise<void>;
@@ -63,6 +64,9 @@ export function WorkspaceSidebar(props: Props) {
   const [peerQuery, setPeerQuery] = useState("");
   const [peers, setPeers] = useState<Peer[] | null>(null);
   const [searched, setSearched] = useState<Peer[] | null>(null);
+  const [groupMode, setGroupMode] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [membersError, setMembersError] = useState<string | null>(null);
   const viewProfile = (userId: string) => navigate(`/app/profile/${userId}`);
   const canManage = space?.role === "owner" || space?.role === "admin";
@@ -71,6 +75,9 @@ export function WorkspaceSidebar(props: Props) {
   const openMemberPicker = () => {
     setPeers(null);
     setSearched(null);
+    setGroupMode(false);
+    setGroupName('');
+    setGroupMembers([]);
     setMembersError(null);
     setPeerQuery("");
     setMemberPickerOpen(true);
@@ -94,6 +101,24 @@ export function WorkspaceSidebar(props: Props) {
   }, [peerQuery]);
   const isSearching = peerQuery.trim().length >= 2;
   const pickerRows = isSearching ? searched : peers;
+  const toggleGroupMember = (userId: string) => {
+    setGroupMembers((current) => current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]);
+  };
+  const createGroup = async () => {
+    if (!groupName.trim() || groupMembers.length === 0) return;
+    setBusy(true);
+    setMembersError(null);
+    try {
+      await props.onCreateGroup(groupName.trim(), groupMembers);
+      setMemberPickerOpen(false);
+      setGroupName('');
+      setGroupMembers([]);
+    } catch (cause) {
+      setMembersError(cause instanceof Error ? cause.message : 'Could not create the group.');
+    } finally {
+      setBusy(false);
+    }
+  };
   const pickMember = async (userId: string) => {
     setBusy(true);
     setMembersError(null);
@@ -178,7 +203,18 @@ export function WorkspaceSidebar(props: Props) {
     </div>
     {creating?.kind === "space" && <Modal title="Create a space" onClose={() => setCreating(null)}><CreateForm creating={creating} name={name} busy={busy} error={error} onName={setName} onCancel={() => setCreating(null)} onSubmit={submitCreate} /></Modal>}
     {deleting && <Modal title={`Delete ${deleting.kind}`} onClose={() => setDeleting(null)}><p className="text-sm leading-6 text-muted-foreground">This deletes <strong className="text-foreground">{deleting.name}</strong>. This action cannot be undone.</p><label className="mt-4 block text-xs font-medium text-muted-foreground">Type <strong className="text-foreground">{deleting.name}</strong> to confirm<input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /></label>{error && <p className="mt-3 text-sm text-red-500">{error}</p>}<div className="mt-6 flex justify-end gap-2"><button onClick={() => setDeleting(null)} className="rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-foreground/5">Cancel</button><button disabled={busy || deleteConfirmation !== deleting.name} onClick={() => void confirmDelete()} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50">{busy ? "Deleting…" : "Delete permanently"}</button></div></Modal>}
-    {memberPickerOpen && <Modal title="Start a direct message" onClose={() => setMemberPickerOpen(false)}><input value={peerQuery} onChange={(event) => setPeerQuery(event.target.value)} placeholder="Search people by name or @username" className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" />{membersError && <p className="mt-2 text-sm text-red-500">{membersError}</p>}{!isSearching && peers === null && !membersError && <p className="mt-2 text-sm text-muted-foreground">Loading people…</p>}{pickerRows !== null && pickerRows.length === 0 && !membersError && <p className="mt-2 text-sm text-muted-foreground">{isSearching ? "No one on Kivo matches that search." : "No conversations yet — search anyone by name or @username."}</p>}{isSearching && pickerRows === null && <p className="mt-2 text-sm text-muted-foreground">Searching…</p>}<div className="mt-2 max-h-64 space-y-1 overflow-y-auto">{(pickerRows ?? []).map((peer) => <button key={peer.id} onClick={() => void pickMember(peer.id)} disabled={busy} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-foreground/5 disabled:opacity-50"><span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">{initials(peer.display_name)}</span><span className="min-w-0 truncate">{peer.display_name}<span className="ml-1.5 text-xs text-muted-foreground">@{peer.username}</span></span></button>)}</div></Modal>}
+    {memberPickerOpen && <Modal title={groupMode ? "New group" : "Start a direct message"} onClose={() => setMemberPickerOpen(false)}><div className="mb-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => setGroupMode(false)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${!groupMode ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:text-foreground"}`}>Direct</button><button type="button" onClick={() => setGroupMode(true)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${groupMode ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:text-foreground"}`}>Group</button></div>{groupMode ? (<><input value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Group name" className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /><p className="mt-2 text-xs text-muted-foreground">Pick members — search by name or @username.</p></>) : (<input value={peerQuery} onChange={(event) => setPeerQuery(event.target.value)} placeholder="Search people by name or @username" className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" />)} {membersError && <p className="mt-2 text-sm text-red-500">{membersError}</p>}{!isSearching && peers === null && !membersError && <p className="mt-2 text-sm text-muted-foreground">Loading people…</p>}{pickerRows !== null && pickerRows.length === 0 && !membersError && <p className="mt-2 text-sm text-muted-foreground">{isSearching ? "No one on Kivo matches that search." : "No conversations yet — search anyone by name or @username."}</p>}{isSearching && pickerRows === null && <p className="mt-2 text-sm text-muted-foreground">Searching…</p>}<div className="mt-2 max-h-64 space-y-1 overflow-y-auto">{(pickerRows ?? []).map((peer) => groupMode ? (
+            <button key={peer.id} onClick={() => toggleGroupMember(peer.id)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${groupMembers.includes(peer.id) ? "bg-foreground/5 text-foreground" : "text-muted-foreground hover:bg-foreground/5"}`}>
+              <span className={`grid size-4 shrink-0 place-items-center rounded border ${groupMembers.includes(peer.id) ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{groupMembers.includes(peer.id) ? "✓" : ""}</span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">{initials(peer.display_name)}</span>
+              <span className="min-w-0 truncate">{peer.display_name}<span className="ml-1.5 text-xs text-muted-foreground">@{peer.username}</span></span>
+            </button>
+          ) : (
+            <button key={peer.id} onClick={() => void pickMember(peer.id)} disabled={busy} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-foreground/5 disabled:opacity-50">
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">{initials(peer.display_name)}</span>
+              <span className="min-w-0 truncate">{peer.display_name}<span className="ml-1.5 text-xs text-muted-foreground">@{peer.username}</span></span>
+            </button>
+          ))}</div>{groupMode && <div className="mt-3 flex justify-end"><button disabled={busy || !groupName.trim() || groupMembers.length === 0} onClick={() => void createGroup()} className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{busy ? "Creating…" : `Create group${groupMembers.length ? ` · ${groupMembers.length}` : ""}`}</button></div>}</Modal>}
     {joinOpen && <Modal title="Join a space" onClose={() => setJoinOpen(false)}><form onSubmit={submitJoin}><label className="block text-xs font-semibold text-foreground">Invite code</label><input autoFocus value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="e.g. a1b2c3d4" className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" />{joinError && <p className="mt-2 text-xs text-red-500">{joinError}</p>}<div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setJoinOpen(false)} className="rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-foreground/5">Cancel</button><button disabled={!joinCode.trim() || joinBusy} className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{joinBusy ? "Joining…" : "Join space"}</button></div></form></Modal>}
   </aside>;
 }
