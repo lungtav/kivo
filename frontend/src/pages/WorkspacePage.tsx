@@ -112,6 +112,16 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations, onConve
   const closeSearch = () => { setSearchOpen(false); setSearchQuery(""); setSearchResults(null); };
 
   useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (searchOpen) { closeSearch(); return; }
+      if (replyingTo) setReplyingTo(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [searchOpen, replyingTo]);
+
+  useEffect(() => {
     const socket = connectRealtime();
     const onPresenceOnline = (payload: { userId: string }) => onPresence?.(payload.userId, true);
     const onPresenceOffline = (payload: { userId: string }) => onPresence?.(payload.userId, false);

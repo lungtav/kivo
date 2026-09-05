@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
+import { CommandPalette } from "./CommandPalette";
 import {
   getSpace,
   listSpaces,
@@ -42,6 +43,7 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   // deep-link handoff from the profile page: open a specific space or conversation once
   const pendingState = location.state as { spaceId?: string; conversationId?: string } | null;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -53,8 +55,21 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
   const [selectedDirectId, setSelectedDirectId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const pendingChannelRef = useRef<string | null>(null);
   const onPresence = (userId: string, online: boolean) => setPresence((prev) => ({ ...prev, [userId]: online }));
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     void listSpaces()
@@ -94,11 +109,14 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     void getSpace(selectedSpaceId)
       .then(({ space: selectedSpace }) => {
         setSpace(selectedSpace);
-        setSelectedChannelId(
-          selectedSpace.categories.flatMap((group) => group.channels)[0]?.id
+        const pending = pendingChannelRef.current;
+        pendingChannelRef.current = null;
+        const wanted = pending && selectedSpace.categories.flatMap((group) => group.channels).concat(selectedSpace.uncategorized_channels).some((channel) => channel.id === pending)
+          ? pending
+          : selectedSpace.categories.flatMap((group) => group.channels)[0]?.id
             ?? selectedSpace.uncategorized_channels[0]?.id
-            ?? null,
-        );
+            ?? null;
+        setSelectedChannelId(wanted);
       })
       .catch(() => setSpace(null));
   }, [selectedSpaceId]);
@@ -120,6 +138,17 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const selectSpace = (id: string) => {
     setView("space");
     setSelectedSpaceId(id);
+  };
+
+  const openChannel = (spaceId: string, channelId: string) => {
+    setView("space");
+    if (spaceId === selectedSpaceId) {
+      setSelectedChannelId(channelId);
+      setSelectedDirectId(null);
+    } else {
+      pendingChannelRef.current = channelId;
+      setSelectedSpaceId(spaceId);
+    }
   };
 
   const selectHome = () => {
@@ -264,6 +293,17 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence })}
+      {paletteOpen && <CommandPalette
+        onClose={() => setPaletteOpen(false)}
+        spaces={spaces}
+        space={space}
+        conversations={conversations}
+        onSelectSpace={selectSpace}
+        onOpenChannel={openChannel}
+        onSelectDirect={selectDirect}
+        onCreateDirect={addDirect}
+        onViewProfile={(userId) => navigate(`/app/profile/${userId}`)}
+      />}
       </section>
     </main>
   );
