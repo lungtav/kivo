@@ -46,8 +46,11 @@ export const updateProcessingResult = async (
 
 export const findAttachmentById = async (attachmentId: string) => {
   const result = await db.query(
-    `SELECT id, message_id, media_type, storage_key, thumbnail_url, processing_status, mime_type, width, height, duration_seconds
-     FROM message_attachments WHERE id = $1`,
+    `SELECT a.id, a.message_id, a.media_type, a.storage_key, a.mime_type, a.file_size_bytes, a.thumbnail_url, a.processing_status, a.width, a.height, a.duration_seconds,
+            m.conversation_id
+     FROM message_attachments a
+     JOIN messages m ON m.id = a.message_id
+     WHERE a.id = $1`,
     [attachmentId],
   );
   return result.rows[0] ?? null;

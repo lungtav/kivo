@@ -10,6 +10,20 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 const callsRouter = Router();
 
+// GET /api/calls — recent calls across all of your dm conversations
+callsRouter.get("/", asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new UnauthorizedError("unauthorized access");
+    }
+
+    const calls = await callLogsRepository.listForUser(userId, 30);
+    res.status(200).json({ calls });
+  },
+));
+
 // GET /api/calls/:conversationId — recent calls in a conversation
 callsRouter.get("/:conversationId", asyncHandler(
   async (req: Request<{ conversationId: string }>, res: Response) => {

@@ -17,7 +17,12 @@ export const createApp = () => {
     const startedAt = Date.now();
     res.on("finish", () => {
       logger.info(
-        { method: req.method, url: req.originalUrl, status: res.statusCode, durationMs: Date.now() - startedAt },
+        {
+          method: req.method,
+          url: req.originalUrl,
+          status: res.statusCode,
+          durationMs: Date.now() - startedAt,
+        },
         "request",
       );
     });

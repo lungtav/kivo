@@ -14,7 +14,7 @@ export const getAttachmentReadUrl = async (
   }
 
   const isMember = await messagesRepository.isConversationMember(
-    attachment.message_id,
+    attachment.conversation_id,
     userId,
   );
   if (!isMember) {
