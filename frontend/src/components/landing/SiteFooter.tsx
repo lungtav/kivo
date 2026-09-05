@@ -24,11 +24,14 @@ export default function SiteFooter() {
           </div>
         </div>
       </div>
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8 text-sm text-neutral-400">
-        <p>© {new Date().getFullYear()} Kivo — a place to work together.</p>
-        <div className="flex items-center gap-6">
-          <Link to="/login" className="transition-colors hover:text-neutral-900">Log in</Link>
-          <Link to="/register" className="font-medium text-neutral-900 transition-colors hover:text-neutral-500">Sign up</Link>
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(36rem_12rem_at_50%_130%,rgba(0,0,0,0.05),transparent)]" />
+        <div className="relative mx-auto flex max-w-5xl items-center justify-between px-6 py-8 text-sm text-neutral-400">
+          <p>© {new Date().getFullYear()} Kivo — a place to work together.</p>
+          <div className="flex items-center gap-6">
+            <Link to="/login" className="transition-colors hover:text-neutral-900">Log in</Link>
+            <Link to="/register" className="font-medium text-neutral-900 transition-colors hover:text-neutral-500">Sign up</Link>
+          </div>
         </div>
       </div>
     </footer>
