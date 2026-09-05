@@ -36,6 +36,7 @@ type WorkspaceShellProps = {
     refreshConversations: () => void;
     onConversationActivity: (conversationId: string, kind: "read" | "new") => void;
     onOpenMembers: () => void;
+    onPresence: (userId: string, online: boolean) => void;
   }) => ReactNode;
 };
 
@@ -52,6 +53,8 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
   const [selectedDirectId, setSelectedDirectId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const onPresence = (userId: string, online: boolean) => setPresence((prev) => ({ ...prev, [userId]: online }));
 
   useEffect(() => {
     void listSpaces()
@@ -231,6 +234,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         selectedChannelId={selectedChannelId}
         membersOpen={membersOpen}
         onMembersOpenChange={setMembersOpen}
+        presence={presence}
         onSelectSpace={selectSpace}
         onSelectChannel={selectChannel}
         view={view}
@@ -249,7 +253,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true) })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence })}
       </section>
     </main>
   );

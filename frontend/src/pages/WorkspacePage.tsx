@@ -67,7 +67,7 @@ export default function WorkspacePage() {
   return <WorkspaceShell>{(props) => <WorkspaceContent {...props} />}</WorkspaceShell>;
 }
 
-function WorkspaceContent({ view, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers }: { view: "home" | "space"; selectedChannel: SelectedConversation | null; refreshConversations?: () => void; onConversationActivity?: (conversationId: string, kind: "read" | "new") => void; onOpenMembers?: () => void }) {
+function WorkspaceContent({ view, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers, onPresence }: { view: "home" | "space"; selectedChannel: SelectedConversation | null; refreshConversations?: () => void; onConversationActivity?: (conversationId: string, kind: "read" | "new") => void; onOpenMembers?: () => void; onPresence?: (userId: string, online: boolean) => void }) {
   const navigate = useNavigate();
   const viewProfile = (userId: string) => navigate(`/app/profile/${userId}`);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -113,8 +113,12 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations, onConve
 
   useEffect(() => {
     const socket = connectRealtime();
+    const onPresenceOnline = (payload: { userId: string }) => onPresence?.(payload.userId, true);
+    const onPresenceOffline = (payload: { userId: string }) => onPresence?.(payload.userId, false);
+    socket.on("presence:online", onPresenceOnline);
+    socket.on("presence:offline", onPresenceOffline);
     const heartbeat = window.setInterval(() => socket.emit("heartbeat"), 20_000);
-    return () => { window.clearInterval(heartbeat); };
+    return () => { socket.off("presence:online", onPresenceOnline); socket.off("presence:offline", onPresenceOffline); window.clearInterval(heartbeat); };
   }, []);
 
   useEffect(() => {
