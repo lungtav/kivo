@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WorkspaceSidebar } from "./WorkspaceSidebar";
 import { CommandPalette } from "./CommandPalette";
+import { CallOverlay } from "./CallOverlay";
 import {
   getSpace,
   listSpaces,
@@ -304,6 +305,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence })}
+      <CallOverlay />
       {paletteOpen && <CommandPalette
         onClose={() => setPaletteOpen(false)}
         spaces={spaces}

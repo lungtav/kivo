@@ -5,6 +5,7 @@ import { wsAuth } from "./ws-auth.middleware.js";
 import { randomUUID } from "crypto";
 import * as presenceRepository from "./presence.repository.js";
 import * as messagesRepository from "../../modules/messages/messages.repository.js";
+import * as conversationsRepository from "../../modules/conversations/conversations.repository.js";
 import * as messagesService from "../../modules/messages/messages.service.js";
 
 export const createSocketServer = (httpServer: HttpServer) => {
@@ -22,6 +23,9 @@ export const createSocketServer = (httpServer: HttpServer) => {
     await presenceRepository.registerConnection(connectionId, userId);
     const user = await messagesRepository.getUserProfile(userId);
 
+    // personal room so call signaling can reach every device of a user
+    socket.join(`user:${userId}`);
+
     const conversationIds =
       await messagesRepository.listConversationIdsForUser(userId);
     socket.data.conversationIds = conversationIds;
@@ -31,6 +35,39 @@ export const createSocketServer = (httpServer: HttpServer) => {
       // presence scoped to conversations the user shares, not a global broadcast
       socket.to(`conversation:${id}`).emit("presence:online", { userId });
     }
+
+    // ── call signaling: relay WebRTC offers/answers/ICE between two DM partners ──
+    const relayTo = (targetUserId: string, event: string, payload: Record<string, unknown>) => {
+      io.to(`user:${targetUserId}`).emit(event, payload);
+    };
+    const canCall = async (targetUserId: string) =>
+      targetUserId !== userId &&
+      !!(await conversationsRepository.findDirectConversation(userId, targetUserId));
+
+    socket.on("call:ring", async (payload: { toUserId?: string; video?: boolean }) => {
+      const to = payload?.toUserId;
+      if (!to || !(await canCall(to))) return;
+      const caller = await messagesRepository.getUserProfile(userId);
+      relayTo(to, "call:incoming", { fromUserId: userId, from: caller, video: !!payload.video });
+    });
+    socket.on("call:accept", (payload: { toUserId?: string }) => {
+      if (payload?.toUserId) relayTo(payload.toUserId, "call:accepted", {});
+    });
+    socket.on("call:decline", (payload: { toUserId?: string }) => {
+      if (payload?.toUserId) relayTo(payload.toUserId, "call:declined", {});
+    });
+    socket.on("call:offer", (payload: { toUserId?: string; sdp?: unknown }) => {
+      if (payload?.toUserId && payload.sdp) relayTo(payload.toUserId, "call:offer", { sdp: payload.sdp });
+    });
+    socket.on("call:answer", (payload: { toUserId?: string; sdp?: unknown }) => {
+      if (payload?.toUserId && payload.sdp) relayTo(payload.toUserId, "call:answer", { sdp: payload.sdp });
+    });
+    socket.on("call:ice", (payload: { toUserId?: string; candidate?: unknown }) => {
+      if (payload?.toUserId && payload.candidate) relayTo(payload.toUserId, "call:ice", { candidate: payload.candidate });
+    });
+    socket.on("call:end", (payload: { toUserId?: string }) => {
+      if (payload?.toUserId) relayTo(payload.toUserId, "call:ended", {});
+    });
 
     //refresh connection
     socket.on("heartbeat", async () => {
