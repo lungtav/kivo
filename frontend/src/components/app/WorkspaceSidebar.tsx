@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, DoorOpen, Hash, LogOut, MessageCircle, Plus, Settings, Trash2, User, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, DoorOpen, Hash, LogOut, MessageCircle, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Plus, Settings, Trash2, User, Users } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../lib/auth";
@@ -14,6 +14,8 @@ import {
   listSpaceMembers,
   revokeInvite,
   searchUsers,
+  getMyCallHistory,
+  type MyCallLog,
   updateProfile,
   type Channel,
   type DirectConversation,
@@ -30,6 +32,7 @@ type Props = {
   view: "home" | "space"; onSelectHome: () => void;
   selectedSpaceId: string | null; selectedChannelId: string | null;
   membersOpen: boolean; onMembersOpenChange: (open: boolean) => void;
+  selfId: string | null;
   presence: Record<string, boolean>;
   directMessages: DirectConversation[]; selectedDirectId: string | null;
   onSelectDirect: (id: string) => void; onCreateDirect: (userId: string) => Promise<void>;
@@ -46,7 +49,7 @@ type Deleting = { kind: "space" | "category" | "channel"; id?: string; name: str
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
 export function WorkspaceSidebar(props: Props) {
-  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect, membersOpen, onMembersOpenChange, presence } = props;
+  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect, membersOpen, onMembersOpenChange, presence, selfId } = props;
   const navigate = useNavigate();
   const [creating, setCreating] = useState<Creating>(null);
   const [deleting, setDeleting] = useState<Deleting>(null);
@@ -61,6 +64,8 @@ export function WorkspaceSidebar(props: Props) {
   const [joinBusy, setJoinBusy] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [dmQuery, setDmQuery] = useState("");
+  const [dmTab, setDmTab] = useState<"chats" | "calls">("chats");
+  const [callHistory, setCallHistory] = useState<MyCallLog[] | null>(null);
   const [peerQuery, setPeerQuery] = useState("");
   const [peers, setPeers] = useState<Peer[] | null>(null);
   const [searched, setSearched] = useState<Peer[] | null>(null);
@@ -72,6 +77,12 @@ export function WorkspaceSidebar(props: Props) {
   const canManage = space?.role === "owner" || space?.role === "admin";
   useEffect(() => { setDeleteConfirmation(""); setError(null); }, [deleting]);
   const startCreate = (kind: NonNullable<Creating>["kind"], categoryId?: string | null) => { setName(""); setError(null); setCreating({ kind, categoryId }); };
+  useEffect(() => {
+    if (dmTab !== "calls" || callHistory !== null) return;
+    void getMyCallHistory()
+      .then(({ calls }) => setCallHistory(calls))
+      .catch(() => setCallHistory([]));
+  }, [dmTab, callHistory]);
   const openMemberPicker = () => {
     setPeers(null);
     setSearched(null);
@@ -186,10 +197,21 @@ export function WorkspaceSidebar(props: Props) {
     <div className={`absolute inset-y-0 left-[72px] z-30 overflow-hidden transition-[width,opacity] duration-200 md:static md:z-auto ${isOpen ? "w-80 opacity-100 shadow-2xl md:shadow-none" : "w-0 opacity-0"}`}>
       <div className="flex h-full w-80 flex-col bg-secondary">
         {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => onMembersOpenChange(false)} onLeaveSpace={props.onLeaveSpace} onViewProfile={viewProfile} presence={presence} /> : view === "home" ? <>
-          <div className="border-b border-border bg-card px-5 py-4"><div className="flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">Direct messages</h2><button onClick={openMemberPicker} className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Start a conversation"><Plus size={16} /></button></div><input value={dmQuery} onChange={(event) => setDmQuery(event.target.value)} placeholder="Find a conversation" className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /></div>
+          <div className="border-b border-border bg-card px-5 py-4">
+            <div className="flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">Direct messages</h2><button onClick={openMemberPicker} className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Start a conversation"><Plus size={16} /></button></div>
+            <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+              <button onClick={() => { setDmTab("chats"); }} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${dmTab === "chats" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Chats</button>
+              <button onClick={() => setDmTab("calls")} className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${dmTab === "calls" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>Calls</button>
+            </div>
+            {dmTab === "chats" && <input value={dmQuery} onChange={(event) => setDmQuery(event.target.value)} placeholder="Find a conversation" className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" />}
+          </div>
           <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-            {visibleConversations.length === 0 && <p className="px-2 py-4 text-sm text-muted-foreground">{directMessages.length === 0 ? "No conversations yet — start one with the + button above." : "No conversations match your search."}</p>}
-            {visibleConversations.map((dm) => <div key={dm.id} className={`group flex items-center rounded-lg ${selectedDirectId === dm.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"}`}><button onClick={() => onSelectDirect(dm.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"><span className={`relative grid size-6 shrink-0 place-items-center rounded-full text-[9px] font-bold ${selectedDirectId === dm.id ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>{dm.peer_avatar_url ? <img src={dm.peer_avatar_url} alt="" className="size-6 shrink-0 rounded-full object-cover" /> : initials(conversationDisplayName(dm))}{dm.peer_id && <span className={`absolute -bottom-0.5 -right-0.5 size-2 rounded-full ring-2 ring-secondary ${presence[dm.peer_id] ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-600"}`} />}</span><span className="min-w-0 flex-1 truncate">{conversationDisplayName(dm)}</span></button>{dm.unread_count > 0 && selectedDirectId !== dm.id && <span className="mr-2 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">{dm.unread_count > 9 ? "9+" : dm.unread_count}</span>}{dm.peer_id && <button onClick={() => { if (dm.peer_id) viewProfile(dm.peer_id); }} className="mr-1.5 rounded p-1 opacity-0 transition group-hover:opacity-100 hover:bg-foreground/10" aria-label={`View ${conversationDisplayName(dm)}'s profile`}><User size={13} /></button>}</div>)}
+            {dmTab === "calls" ? (
+              <CallHistory calls={callHistory} selfId={selfId} onOpen={(conversationId) => onSelectDirect(conversationId)} onViewProfile={viewProfile} />
+            ) : (<>
+              {visibleConversations.length === 0 && <p className="px-2 py-4 text-sm text-muted-foreground">{directMessages.length === 0 ? "No conversations yet — start one with the + button above." : "No conversations match your search."}</p>}
+              {visibleConversations.map((dm) => <div key={dm.id} className={`group flex items-center rounded-lg ${selectedDirectId === dm.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground"}`}><button onClick={() => onSelectDirect(dm.id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm"><span className={`relative grid size-6 shrink-0 place-items-center rounded-full text-[9px] font-bold ${selectedDirectId === dm.id ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"}`}>{dm.peer_avatar_url ? <img src={dm.peer_avatar_url} alt="" className="size-6 shrink-0 rounded-full object-cover" /> : initials(conversationDisplayName(dm))}{dm.peer_id && <span className={`absolute -bottom-0.5 -right-0.5 size-2 rounded-full ring-2 ring-secondary ${presence[dm.peer_id] ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-600"}`} />}</span><span className="min-w-0 flex-1 truncate">{conversationDisplayName(dm)}</span></button>{dm.unread_count > 0 && selectedDirectId !== dm.id && <span className="mr-2 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">{dm.unread_count > 9 ? "9+" : dm.unread_count}</span>}{dm.peer_id && <button onClick={() => { if (dm.peer_id) viewProfile(dm.peer_id); }} className="mr-1.5 rounded p-1 opacity-0 transition group-hover:opacity-100 hover:bg-foreground/10" aria-label={`View ${conversationDisplayName(dm)}'s profile`}><User size={13} /></button>}</div>)}
+            </>)}
           </div>
         </> : <>
           <div className="border-b border-border bg-card px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">Space</p><div className="mt-1 flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">{space?.name ?? "Loading…"}</h2>{canManage && <button onClick={() => setDeleting({ kind: "space", name: space?.name ?? "this space" })} className="rounded-md p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-600" title="Delete space" aria-label="Delete space"><Trash2 size={15} /></button>}</div><div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><button onClick={() => onMembersOpenChange(true)} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-foreground/5 hover:text-foreground"><Users size={14} /><span>{space?.role === "member" ? "Members" : "Admin controls enabled"}</span></button></div></div>
@@ -228,6 +250,40 @@ function ChannelGroup({ name, channels, selected, canManage, onSelect, onCreate,
 function CreateForm({ creating, name, busy, error, onName, onCancel, onSubmit }: { creating: NonNullable<Creating>; name: string; busy: boolean; error: string | null; onName: (name: string) => void; onCancel: () => void; onSubmit: (event: FormEvent) => void }) {
   const label = creating.kind === "space" ? "Space" : creating.kind === "category" ? "Category" : "Channel";
   return <form onSubmit={onSubmit} className="mb-3 rounded-xl border border-border bg-card p-3 shadow-sm"><label className="block text-xs font-semibold text-foreground">New {label}</label><input autoFocus value={name} onChange={(event) => onName(event.target.value)} placeholder={`${label} name`} className="mt-2 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-neutral-400 dark:focus:border-neutral-600" /><div className="mt-3 flex justify-end gap-2"><button type="button" onClick={onCancel} className="rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-foreground/5">Cancel</button><button disabled={!name.trim() || busy} className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{busy ? "Creating…" : `Create ${label}`}</button></div>{error && <p className="mt-2 text-xs text-red-500">{error}</p>}</form>;
+}
+
+function CallHistory({ calls, selfId, onOpen, onViewProfile }: { calls: MyCallLog[] | null; selfId: string | null; onOpen: (conversationId: string) => void; onViewProfile: (userId: string) => void }) {
+  const formatDuration = (seconds: number) => seconds >= 60 ? `${Math.floor(seconds / 60)}m ${seconds % 60}s` : `${seconds}s`;
+  return (
+    <div className="space-y-0.5">
+      {calls === null && <p className="px-2 py-4 text-sm text-muted-foreground">Loading call history…</p>}
+      {calls?.length === 0 && <p className="px-2 py-4 text-sm text-muted-foreground">No calls yet — start one from any conversation.</p>}
+      {calls?.map((log) => {
+        const outgoing = selfId !== null && log.caller_id === selfId;
+        const name = outgoing ? log.peer_display_name ?? "Unknown" : log.caller_display_name;
+        const otherId = outgoing ? log.peer_id : log.caller_id;
+        const durationSeconds = log.started_at && log.ended_at ? Math.max(1, Math.round((new Date(log.ended_at).getTime() - new Date(log.started_at).getTime()) / 1000)) : null;
+        const missed = log.status === "declined" || log.status === "no_answer";
+        const Icon = missed ? PhoneMissed : log.status === "answered" ? (outgoing ? PhoneOutgoing : PhoneIncoming) : PhoneOff;
+        const statusLabel = log.status === "answered" ? (durationSeconds ? formatDuration(durationSeconds) : "Answered") : log.status === "declined" ? "Declined" : log.status === "no_answer" ? "No answer" : "Cancelled";
+        return (
+          <div key={log.id} className="group flex items-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground">
+            <button onClick={() => onOpen(log.conversation_id)} className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-sm">
+              <span className="relative grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                {log.peer_avatar_url && outgoing ? <img src={log.peer_avatar_url} alt="" className="size-6 rounded-full object-cover" /> : initials(name)}
+                <Icon size={9} className={`absolute -bottom-0.5 -right-0.5 rounded-full bg-background p-px ${missed ? "text-red-500" : "text-foreground"}`} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate">{name}</span>
+                <span className="block truncate text-[11px]">{outgoing ? "Outgoing" : "Incoming"} · {statusLabel} · {new Date(log.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
+              </span>
+            </button>
+            {otherId && <button onClick={() => onViewProfile(otherId)} className="mr-1.5 rounded p-1 opacity-0 transition group-hover:opacity-100 hover:bg-foreground/10" aria-label={`View ${name}'s profile`}><User size={13} /></button>}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) { return <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-5" role="dialog" aria-modal="true" aria-label={title} onMouseDown={onClose}><div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl" onMouseDown={(event) => event.stopPropagation()}><h3 className="text-base font-semibold">{title}</h3><div className="mt-4">{children}</div></div></div>; }

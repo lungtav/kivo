@@ -9,6 +9,7 @@ import {
   listConversations,
   createDirectMessage,
   createGroupConversation,
+  getMe,
   createCategory,
   createChannel,
   createSpace,
@@ -60,8 +61,13 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [membersOpen, setMembersOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const [selfId, setSelfId] = useState<string | null>(null);
   const pendingChannelRef = useRef<string | null>(null);
   const onPresence = (userId: string, online: boolean) => setPresence((prev) => ({ ...prev, [userId]: online }));
+
+  useEffect(() => {
+    void getMe().then(({ user }) => setSelfId(user.id)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -285,6 +291,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         membersOpen={membersOpen}
         onMembersOpenChange={setMembersOpen}
         presence={presence}
+        selfId={selfId}
         onSelectSpace={selectSpace}
         onSelectChannel={selectChannel}
         view={view}

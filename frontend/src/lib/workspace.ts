@@ -132,6 +132,24 @@ export type CallLog = {
   caller_username?: string;
 };
 
+export type MyCallLog = {
+  id: string;
+  conversation_id: string;
+  caller_id: string;
+  status: CallLog["status"];
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+  caller_display_name: string;
+  caller_username: string;
+  peer_id: string | null;
+  peer_display_name: string | null;
+  peer_username: string | null;
+  peer_avatar_url: string | null;
+};
+
+export const getMyCallHistory = () => apiRequest<{ calls: MyCallLog[] }>("/api/calls");
+
 export const getCallLogs = (conversationId: string) => apiRequest<{ calls: CallLog[] }>(`/api/calls/${conversationId}`);
 
 export const markConversationRead = (conversationId: string) => apiRequest<void>(`/api/messages/${conversationId}/read`, { method: "POST" });
