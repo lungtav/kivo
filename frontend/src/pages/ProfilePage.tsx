@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { logout } from "../lib/auth";
 import { getRealtimeSocket } from "../lib/realtime";
 import { getProfile, type ProfilePayload } from "../lib/workspace";
+import { Skeleton } from "../components/ui/skeleton";
 
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
@@ -44,7 +45,24 @@ export default function ProfilePage() {
   return <main className="min-h-svh bg-background text-foreground"><div className="mx-auto max-w-2xl px-6 py-10">
     <Link to="/app" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> Back to workspace</Link>
     {error && <p role="alert" className="mt-8 rounded-xl border border-red-400/30 bg-red-400/[.06] px-4 py-3 text-sm text-red-300">{error}</p>}
-    {!profile && !error && <p className="mt-8 text-sm text-muted-foreground">Loading profile…</p>}
+    {!profile && !error && (
+      <div className="mt-8">
+        <div className="flex items-center gap-5">
+          <Skeleton className="size-20 rounded-2xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-3.5 w-28" />
+            <Skeleton className="h-3 w-36" />
+          </div>
+        </div>
+        <Skeleton className="mt-6 h-24 rounded-2xl" />
+        <div className="mt-8 space-y-3">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-14 rounded-2xl" />
+          <Skeleton className="h-14 rounded-2xl" />
+        </div>
+      </div>
+    )}
     {profile && <div className="mt-8">
       <div className="flex items-start justify-between gap-5">
       <div className="flex items-center gap-5">

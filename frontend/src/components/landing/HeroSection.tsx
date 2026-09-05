@@ -39,7 +39,7 @@ export default function HeroSection() {
           <div className="space-y-5 p-6">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-neutral-400">#</span>
+                <span className="font-bold text-neutral-400">@</span>
                 <span className="text-sm font-semibold text-neutral-950">design-team</span>
                 <span className="rounded-full bg-neutral-950 px-2 py-0.5 text-[10px] font-semibold text-white">3 unread</span>
               </div>

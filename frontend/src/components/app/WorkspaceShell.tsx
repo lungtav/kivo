@@ -42,6 +42,7 @@ type WorkspaceShellProps = {
     onConversationActivity: (conversationId: string, kind: "read" | "new") => void;
     onOpenMembers: () => void;
     onPresence: (userId: string, online: boolean) => void;
+    conversationsLoading: boolean;
   }) => ReactNode;
 };
 
@@ -57,6 +58,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [space, setSpace] = useState<SpaceStructure | null>(null);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<DirectConversation[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
   const [selectedDirectId, setSelectedDirectId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -262,7 +264,8 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const refreshConversations = () => {
     void listConversations()
       .then(({ conversations: items }) => setConversations(items))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setConversationsLoading(false));
   };
 
   // keep channel unread badges live: "new" bumps a non-open channel, "read" clears it
@@ -292,6 +295,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onMembersOpenChange={setMembersOpen}
         presence={presence}
         selfId={selfId}
+        conversationsLoading={conversationsLoading}
         onSelectSpace={selectSpace}
         onSelectChannel={selectChannel}
         view={view}
@@ -311,7 +315,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence, conversationsLoading })}
       <CallOverlay />
       {paletteOpen && <CommandPalette
         onClose={() => setPaletteOpen(false)}
