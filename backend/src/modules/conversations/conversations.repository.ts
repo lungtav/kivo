@@ -29,7 +29,7 @@ const conversationSelection = `
   JOIN conversation_members mine
     ON mine.conversation_id = c.id AND mine.user_id = $1 AND mine.left_at IS NULL
   LEFT JOIN LATERAL (
-    SELECT u.id, u.display_name, u.username, u.avatar_url
+    SELECT u.id, u.display_name, u.username, u.avatar_url, other.last_read_message_id AS peer_last_read_message_id
     FROM conversation_members other
     JOIN users u ON u.id = other.user_id
     WHERE other.conversation_id = c.id AND other.user_id <> $1 AND other.left_at IS NULL

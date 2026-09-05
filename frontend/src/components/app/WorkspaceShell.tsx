@@ -28,6 +28,7 @@ export type SelectedConversation = {
   name: string;
   kind: "channel" | "direct";
   peerId?: string;
+  peerLastReadId?: string;
 };
 
 type WorkspaceShellProps = {

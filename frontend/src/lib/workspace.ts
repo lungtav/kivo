@@ -73,6 +73,7 @@ export type DirectConversation = {
   peer_display_name: string | null;
   peer_username: string | null;
   peer_avatar_url: string | null;
+  peer_last_read_message_id: string | null;
   member_count: number;
   unread_count: number;
 };
