@@ -1,11 +1,18 @@
 # Kivo
 
-Realtime chat platform — spaces, categories, channels, and messaging with a websocket layer.
+Realtime chat platform — spaces, channels, direct messages, and profiles, in a black-and-white interface with light and dark modes.
 
-## Stack
+- **Backend** (`backend/`): Node + Express 5 + TypeScript, Postgres (Neon-compatible), Redis (BullMQ + rate limiting + presence), socket.io, Resend (verification email), Backblaze B2 (attachments).
+- **Frontend** (`frontend/`): React + Vite + Tailwind v4, socket.io-client.
 
-- **Backend** (`backend/`): Node + Express 5 + TypeScript, Postgres (Neon), Redis (BullMQ queues + rate limiting), socket.io, Resend (transactional email), Backblaze B2 (media storage).
-- **Frontend** (`frontend/`): React + Vite + Tailwind, socket.io-client.
+## Features
+
+- **Spaces & channels** — categories, positions, admin-only creation, join-on-open for members.
+- **Messaging** — realtime send/receive with typing indicators, replies, edit and delete (deleted messages stay as tombstones), markdown (`**bold**`, `*italic*`, `` `code` ``, fenced code blocks, links), file/image attachments with inline previews, date grouping, paginated history.
+- **Direct messages** — a dedicated DMs home with search, unread badges, Seen receipts, group DMs, and global user search by name or @username (Ctrl/Cmd + K jumps anywhere).
+- **People** — profiles with bio, avatars (auto-resized), presence dots, shared spaces and groups in common.
+- **Access** — invite links with limits and revocation, roles (owner/admin/member), kick and leave.
+- **Preferences** — light/dark theme (persisted, no flash on load), composer drafts per conversation, unread count in the tab title.
 
 ## Development
 
@@ -14,15 +21,10 @@ Realtime chat platform — spaces, categories, channels, and messaging with a we
 ```bash
 cd backend
 npm install
+cp .env.example .env        # then fill in real values
 
-# 1. Configure environment
-cp .env .env.local   # or create .env — see src/config/env.ts for required keys
-
-# 2. Run schema migrations (must run from backend/ — the runner resolves migrations relative to cwd)
-npm run db:migrate
-
-# 3. Run the API + websocket server
-npm run dev
+npm run db:migrate          # applies SQL migrations (run from backend/)
+npm run dev                 # API + websocket server on :5000
 ```
 
 ### Workers (separate process, required)
@@ -32,16 +34,26 @@ cd backend
 npm run dev:worker
 ```
 
-BullMQ workers run in a **dedicated process**, deliberately separate from the API server. The API only enqueues jobs (verification email, attachment processing); the worker process consumes them. This keeps heavy or slow jobs from competing with request handling for CPU, and lets the worker scale independently as workload grows.
+BullMQ workers run in a **dedicated process**, deliberately separate from the API server. The API only enqueues jobs (verification email, attachment processing); the worker process drains the queues. This keeps heavy jobs from competing with request handling and lets workers scale independently.
 
-The API is not fully functional without a running worker — for example, verification emails are only delivered once `dev:worker` is up, because that is where the email queue is drained.
+The API is not fully functional without a running worker — verification emails, for example, are only delivered once `dev:worker` is up.
 
 ### Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                 # Vite dev server on :5173
 ```
 
-The Vite dev server proxies `/api` and `/socket.io` to the backend (target configurable via `VITE_API_TARGET`, default `http://localhost:5000`), so realtime works in development without extra configuration.
+The Vite dev server proxies `/api` and `/socket.io` to the backend (`VITE_API_TARGET`, default `http://localhost:5000`), so no CORS setup is needed in development.
+
+## Environment
+
+All backend configuration lives in `backend/.env` — see [`backend/.env.example`](backend/.env.example) for every key with commentary. Requirements: Postgres, Redis, a Resend key (signup emails), and a Backblaze B2 bucket (message attachments). Frontend vars are documented in [`frontend/.env.example`](frontend/.env.example).
+
+## Notes
+
+- Migrations live in `backend/src/infrastructure/database/migrations/` and are tracked by filename in a `schema_migrations` table.
+- The theme (light/dark) is stored in `localStorage` under `kivo_theme` and applied before first paint.
+- Health check: `GET /api/health`.
