@@ -203,6 +203,16 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setSelectedSpaceId(result.spaceId);
   };
 
+  const unreadEverywhere =
+    conversations.reduce((sum, dm) => sum + dm.unread_count, 0) +
+    (space
+      ? [...space.categories.flatMap((group) => group.channels), ...space.uncategorized_channels]
+          .reduce((sum, channel) => sum + (channel.unread_count ?? 0), 0)
+      : 0);
+  useEffect(() => {
+    document.title = unreadEverywhere > 0 ? `(${unreadEverywhere}) Kivo` : "Kivo — realtime chat for your communities";
+  }, [unreadEverywhere]);
+
   const refreshConversations = () => {
     void listConversations()
       .then(({ conversations: items }) => setConversations(items))
