@@ -175,13 +175,27 @@ export function CallOverlay() {
         if (current) return current;
         peerRef.current = peerId;
         void (async () => {
+          let useVideo = video;
           try {
-            await getMedia(video);
-            getRealtimeSocket()?.emit("call:ring", { toUserId: peerId, video });
+            await getMedia(useVideo);
           } catch {
-            setCall({ peerId, peerName, video, direction: "out", status: "unavailable" });
-            window.setTimeout(cleanup, 2_500);
+            if (!useVideo) {
+              setCall({ peerId, peerName, video: false, direction: "out", status: "unavailable" });
+              window.setTimeout(cleanup, 2_500);
+              return;
+            }
+            // no camera — degrade to a voice call instead of failing
+            try {
+              useVideo = false;
+              await getMedia(false);
+              setCall({ peerId, peerName, video: false, direction: "out", status: "ringing" });
+            } catch {
+              setCall({ peerId, peerName, video: false, direction: "out", status: "unavailable" });
+              window.setTimeout(cleanup, 2_500);
+              return;
+            }
           }
+          getRealtimeSocket()?.emit("call:ring", { toUserId: peerId, video: useVideo });
         })();
         return { peerId, peerName, video, direction: "out", status: "ringing" };
       });
