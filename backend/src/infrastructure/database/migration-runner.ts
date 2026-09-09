@@ -3,12 +3,31 @@ import path from "node:path";
 import { Client } from "pg";
 import { env } from "../../config/env.js";
 
-const migrationsDirectory = path.join(
-  process.cwd(),
-  "src/infrastructure/database/migrations",
-);
+async function resolveMigrationsDirectory() {
+  const candidates = [
+    process.env.MIGRATIONS_DIR,
+    // prod image: SQL copied to /app/migrations (see backend/Dockerfile)
+    path.join(process.cwd(), "migrations"),
+    // dev: running via tsx from the repo root
+    path.join(process.cwd(), "src/infrastructure/database/migrations"),
+  ].filter((dir): dir is string => Boolean(dir));
+
+  for (const dir of candidates) {
+    try {
+      const stat = await fs.stat(dir);
+      if (stat.isDirectory()) return dir;
+    } catch {
+      // try the next candidate
+    }
+  }
+
+  throw new Error(
+    `Migrations directory not found. Tried: ${candidates.join(", ")}`,
+  );
+}
 
 export async function runMigrations() {
+const migrationsDirectory = await resolveMigrationsDirectory();
   const client = new Client({
     connectionString: env.databaseUrlDirect,
   });

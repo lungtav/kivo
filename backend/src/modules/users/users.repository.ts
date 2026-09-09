@@ -46,16 +46,22 @@ export const sharesConversationWith = async (userId: string, targetUserId: strin
 };
 
 export const searchUsersByName = async (excludeUserId: string, query: string) => {
-  const pattern = `%${query}%`;
+  const contains = `%${query}%`;
+  const prefix = `${query}%`;
   const result = await db.query(
     `SELECT id, display_name, username, avatar_url
      FROM users
      WHERE deleted_at IS NULL
        AND id <> $1
-       AND (username ILIKE $2 OR display_name ILIKE $2)
-     ORDER BY username
+       AND (username ILIKE $2 ESCAPE '\\' OR display_name ILIKE $2 ESCAPE '\\')
+     ORDER BY
+       CASE WHEN username = $3 THEN 0
+            WHEN username ILIKE $4 ESCAPE '\\' THEN 1
+            WHEN display_name ILIKE $4 ESCAPE '\\' THEN 2
+            ELSE 3 END,
+       username
      LIMIT 10`,
-    [excludeUserId, pattern],
+    [excludeUserId, contains, query, prefix],
   );
   return result.rows;
 };

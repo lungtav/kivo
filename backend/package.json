@@ -7,7 +7,9 @@
     "dev": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/infrastructure/queue/workers/workers.ts",
     "start": "node dist/server.js",
-    "db:migrate": "tsx src/infrastructure/database/migration-runner.js"
+    "start:worker": "node dist/infrastructure/queue/workers/workers.js",
+    "db:migrate": "tsx src/infrastructure/database/migration-runner.js",
+    "db:migrate:prod": "node dist/infrastructure/database/migration-runner.js"
   },
   "author": "Sogbanmu Oluwafunmbi",
   "license": "ISC",

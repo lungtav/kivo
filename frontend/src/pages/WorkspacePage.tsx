@@ -1,11 +1,11 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { AtSign, Hash, Phone, PhoneMissed, PhoneOff, Search, Settings, User, Users, Video, X } from "lucide-react";
+import { AtSign, Hash, MessageCircle, Phone, PhoneMissed, PhoneOff, Search, Settings, User, Users, Video, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MessageComposer } from "../components/app/MessageComposer";
 import { Skeleton } from "../components/ui/skeleton";
 import { MessageItem, type Message } from "../components/app/MessageItem";
 import { WorkspaceShell, type SelectedConversation } from "../components/app/WorkspaceShell";
-import { getMessages, joinChannel, sendMessage, requestUploadUrl, uploadToStorage, editMessage, deleteMessage, markConversationRead, searchMessages, getCallLogs, type ApiMessage, type CallLog } from "../lib/workspace";
+import { getMessages, joinChannel, sendMessage, requestUploadUrl, uploadToStorage, editMessage, deleteMessage, markConversationRead, searchMessages, getCallLogs, type ApiMessage, type CallLog, type Space } from "../lib/workspace";
 import { ApiError } from "../lib/api";
 import { connectRealtime, getRealtimeSocket } from "../lib/realtime";
 import { callBus } from "../components/app/CallOverlay";
@@ -69,7 +69,7 @@ export default function WorkspacePage() {
   return <WorkspaceShell>{(props) => <WorkspaceContent {...props} />}</WorkspaceShell>;
 }
 
-function WorkspaceContent({ view, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers, onPresence }: { view: "home" | "space"; selectedChannel: SelectedConversation | null; refreshConversations?: () => void; onConversationActivity?: (conversationId: string, kind: "read" | "new") => void; onOpenMembers?: () => void; onPresence?: (userId: string, online: boolean) => void }) {
+function WorkspaceContent({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers, onPresence, hasConversations, onOpenPalette }: { view: "home" | "space"; selectedSpace: Space | null; selectedChannel: SelectedConversation | null; refreshConversations?: () => void; onConversationActivity?: (conversationId: string, kind: "read" | "new") => void; onOpenMembers?: () => void; onPresence?: (userId: string, online: boolean) => void; hasConversations: boolean; onOpenPalette: () => void }) {
   const navigate = useNavigate();
   const viewProfile = (userId: string) => navigate(`/app/profile/${userId}`);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -304,7 +304,7 @@ function WorkspaceContent({ view, selectedChannel, refreshConversations, onConve
                 </div>
               ))}
             </div>
-          )}{messagesError && <p role="alert" className="text-sm text-red-500">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>}<div className="space-y-1">{(() => { const timeline: ({ key: string; sentAt: Date; kind: "message"; message: Message } | { key: string; sentAt: Date; kind: "call"; log: CallLog })[] = [...callLogs.map((log) => ({ key: `call-${log.id}`, kind: "call" as const, log, sentAt: new Date(log.created_at) })), ...messages.map((message) => ({ key: message.id, kind: "message" as const, message, sentAt: message.sentAt }))].sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime()); return timeline.map((item, index) => { const previous = timeline[index - 1]; return <Fragment key={item.key}>{(!previous || !isSameDay(previous.sentAt, item.sentAt)) && <div className="mb-6 mt-2 flex items-center gap-3"><div className="h-px flex-1 bg-border" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{dayLabel(item.sentAt)}</span><div className="h-px flex-1 bg-border" /></div>}{item.kind === "call" ? <CallEntry log={item.log} /> : <MessageItem message={item.message} onEdit={handleEdit} onDelete={handleDelete} onReply={setReplyingTo} />}</Fragment>; }); })()}{seen && <p className="pt-1 pr-1 text-right text-[10px] text-muted-foreground">Seen</p>}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} draftKey={selectedChannel.id} replyTo={replyingTo ? { author: replyingTo.author, body: replyingTo.body } : null} onCancelReply={() => setReplyingTo(null)} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
+          )}{messagesError && <p role="alert" className="text-sm text-red-500">{messagesError}</p>}{!loadingMessages && !messagesError && messages.length === 0 && selectedChannel && <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>}{!loadingMessages && !messagesError && !selectedChannel && <EmptyConversationState view={view} hasSpace={selectedSpace !== null} hasConversations={hasConversations} onOpenPalette={onOpenPalette} />}<div className="space-y-1">{(() => { const timeline: ({ key: string; sentAt: Date; kind: "message"; message: Message } | { key: string; sentAt: Date; kind: "call"; log: CallLog })[] = [...callLogs.map((log) => ({ key: `call-${log.id}`, kind: "call" as const, log, sentAt: new Date(log.created_at) })), ...messages.map((message) => ({ key: message.id, kind: "message" as const, message, sentAt: message.sentAt }))].sort((a, b) => a.sentAt.getTime() - b.sentAt.getTime()); return timeline.map((item, index) => { const previous = timeline[index - 1]; return <Fragment key={item.key}>{(!previous || !isSameDay(previous.sentAt, item.sentAt)) && <div className="mb-6 mt-2 flex items-center gap-3"><div className="h-px flex-1 bg-border" /><span className="text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">{dayLabel(item.sentAt)}</span><div className="h-px flex-1 bg-border" /></div>}{item.kind === "call" ? <CallEntry log={item.log} /> : <MessageItem message={item.message} onEdit={handleEdit} onDelete={handleDelete} onReply={setReplyingTo} />}</Fragment>; }); })()}{seen && <p className="pt-1 pr-1 text-right text-[10px] text-muted-foreground">Seen</p>}</div><div ref={messagesEndRef} /></div></div>{selectedChannel && <><TypingIndicator users={typers} /><MessageComposer channel={selectedChannel.name} channelIcon={selectedChannel.kind === "direct" ? "@" : "#"} draftKey={selectedChannel.id} replyTo={replyingTo ? { author: replyingTo.author, body: replyingTo.body } : null} onCancelReply={() => setReplyingTo(null)} onSend={addMessage} onTyping={handleTyping} /></>}</div></section></div>;
 }
 
 function CallEntry({ log }: { log: CallLog }) {
@@ -322,4 +322,25 @@ function TypingIndicator({ users }: { users: TypingUser[] }) { if (!users.length
 
 function HeaderButton({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
   return <button aria-label={label} onClick={onClick} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-foreground/5 hover:text-foreground">{children}</button>;
+}
+
+function EmptyConversationState({ view, hasSpace, hasConversations, onOpenPalette }: { view: "home" | "space"; hasSpace: boolean; hasConversations: boolean; onOpenPalette: () => void }) {
+  if (view === "home") {
+    return (
+      <div className="flex flex-col items-center px-6 py-16 text-center">
+        <span className="grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground"><MessageCircle size={22} /></span>
+        <h2 className="mt-4 text-base font-semibold">{hasConversations ? "No conversation selected" : "No chats yet"}</h2>
+        <p className="mt-1 max-w-xs text-sm leading-6 text-muted-foreground">{hasConversations ? "Pick a conversation from the list, or find someone new to talk to." : "Find anyone on Kivo by name or @username to start your first conversation."}</p>
+        <button onClick={onOpenPalette} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"><Search size={15} /> Find people</button>
+        <p className="mt-2 text-[11px] text-muted-foreground">or press Ctrl/⌘ K</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center px-6 py-16 text-center">
+      <span className="grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground"><Hash size={22} /></span>
+      <h2 className="mt-4 text-base font-semibold">{hasSpace ? "No channel selected" : "No spaces yet"}</h2>
+      <p className="mt-1 max-w-xs text-sm leading-6 text-muted-foreground">{hasSpace ? "Pick a channel from the sidebar to start chatting." : "Create a space with the + button, or join one with an invite code."}</p>
+    </div>
+  );
 }

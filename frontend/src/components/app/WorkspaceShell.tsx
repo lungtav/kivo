@@ -43,6 +43,8 @@ type WorkspaceShellProps = {
     onOpenMembers: () => void;
     onPresence: (userId: string, online: boolean) => void;
     conversationsLoading: boolean;
+    hasConversations: boolean;
+    onOpenPalette: () => void;
   }) => ReactNode;
 };
 
@@ -90,9 +92,11 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           ? pendingState.spaceId
           : userSpaces[0]?.id ?? null;
         setSelectedSpaceId(preferred);
-        if (pendingState?.spaceId) setView("space");
+        // no spaces at all (brand-new user) belongs on home, not an empty space view
+        if (preferred === null) setView("home");
+        else if (pendingState?.spaceId) setView("space");
       })
-      .catch(() => setSpaces([]));
+      .catch(() => { setSpaces([]); setView("home"); });
     void listConversations()
       .then(({ conversations: items }) => {
         setConversations(items);
@@ -102,7 +106,8 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
           setView("home");
         }
       })
-      .catch(() => setConversations([]));
+      .catch(() => setConversations([]))
+      .finally(() => setConversationsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -315,7 +320,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence, conversationsLoading })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence, conversationsLoading, hasConversations: conversations.length > 0, onOpenPalette: () => setPaletteOpen(true) })}
       <CallOverlay />
       {paletteOpen && <CommandPalette
         onClose={() => setPaletteOpen(false)}

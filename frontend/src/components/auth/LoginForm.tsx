@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AuthField } from "./AuthField";
 import { Brand } from "../brand/Brand";
 import { login } from "../../lib/auth";
+import { getPendingInvite } from "../../lib/invite";
 import { ApiError } from "../../lib/api";
 
 const initialForm = { email: "", password: "" };
@@ -41,7 +42,9 @@ export function LoginForm() {
       const { accessToken } = await login(form);
       localStorage.setItem("kivo_access_token", accessToken);
       const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
-      navigate(from && from.startsWith("/") ? from : "/app");
+      // a logged-out invite visit stashes its code here so signup/login flows land back on it
+      const pendingInvite = getPendingInvite();
+      navigate(from && from.startsWith("/") ? from : pendingInvite ? `/join/${pendingInvite}` : "/app");
     } catch (submissionError) {
       if (submissionError instanceof ApiError && submissionError.code === "EMAIL_UNVERIFIED") {
         sessionStorage.setItem("kivo_pending_verification_email", form.email);

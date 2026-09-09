@@ -63,8 +63,35 @@ export const revokeInvite = async (inviteId: string, userId: string) => {
   }
 };
 
-export const joinSpace = async (code: string, userId: string) => {
-  const result = await invitesRepository.redeemInvite(code, userId);
+export const previewInvite = async (code: string) => {
+  const invite = await invitesRepository.findInvitePreviewByCode(code);
+  if (!invite) {
+    throw new NotFoundError("invite not found");
+  }
+  // non-404 states ride along as 200 so the join page can explain them;
+  // only unknown codes are a 404
+  const status = invite.revoked_at
+    ? ("revoked" as const)
+    : invite.expires_at && new Date(invite.expires_at) < new Date()
+      ? ("expired" as const)
+      : invite.max_uses !== null && invite.uses_count >= invite.max_uses
+        ? ("exhausted" as const)
+        : ("valid" as const);
+  return {
+    status,
+    space: {
+      id: invite.space_id as string,
+      name: invite.space_name as string,
+      avatar_url: (invite.space_avatar_url ?? null) as string | null,
+    },
+    memberCount: invite.member_count as number,
+    maxUses: (invite.max_uses ?? null) as number | null,
+    usesCount: invite.uses_count as number,
+    expiresAt: (invite.expires_at ?? null) as string | null,
+  };
+};
+
+export const joinSpace = async (code: string, userId: string) => {  const result = await invitesRepository.redeemInvite(code, userId);
 
   switch (result.status) {
     case "joined":

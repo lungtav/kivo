@@ -32,6 +32,15 @@ export const createInvite = asyncHandler(
   },
 );
 
+export const previewInvite = asyncHandler(
+  async (req: Request<{ code: string }>, res: Response) => {
+    // public on purpose: join links must render for logged-out visitors.
+    // codes are 48-bit random, so they aren't guessable.
+    const invite = await invitesService.previewInvite(req.params.code);
+    res.status(200).json({ invite });
+  },
+);
+
 export const joinSpace = asyncHandler(
   async (req: Request<{ code: string }>, res: Response) => {
     const userId = req.user.id;

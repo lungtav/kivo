@@ -170,6 +170,28 @@ export const listInvites = (spaceId: string) => apiRequest<{ invites: SpaceInvit
 export const revokeInvite = (inviteId: string) => apiRequest<void>(`/api/spaces/invites/${inviteId}`, { method: "DELETE" });
 export const joinSpaceByCode = (code: string) => apiRequest<{ result: { spaceId: string } }>(`/api/spaces/join/${encodeURIComponent(code)}`, { method: "POST" });
 
+export type InvitePreview = {
+  status: "valid" | "revoked" | "expired" | "exhausted";
+  space: { id: string; name: string; avatar_url: string | null };
+  memberCount: number;
+  maxUses: number | null;
+  usesCount: number;
+  expiresAt: string | null;
+};
+
+// public endpoint — works logged out, 404s on unknown codes
+export const previewInvite = (code: string) => apiRequest<{ invite: InvitePreview }>(`/api/invites/${encodeURIComponent(code)}`);
+
+// shareable join link, e.g. https://kivo.app/join/AbC123Xy
+export const inviteLink = (code: string) => `${window.location.origin}/join/${code}`;
+
+// accepts a raw code or a pasted invite link
+export const extractInviteCode = (input: string) => {
+  const trimmed = input.trim();
+  const fromLink = trimmed.match(/\/join\/([A-Za-z0-9_-]+)/);
+  return (fromLink?.[1] ?? trimmed).replace(/\s+/g, "");
+};
+
 export type UserProfile = {
   id: string;
   email: string;

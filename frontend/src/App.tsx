@@ -8,6 +8,7 @@ import CheckEmailPage from "./pages/CheckEmailPage";
 import WorkspacePage from "./pages/WorkspacePage";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
+import JoinSpacePage from "./pages/JoinSpacePage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import VerifyAccountPage from "./pages/VerifyAccountPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -52,6 +53,7 @@ function App() {
       <Route path="/check-email" element={<CheckEmailPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/verify-account" element={<VerifyAccountPage />} />
+      <Route path="/join/:code" element={<JoinSpacePage />} />
       <Route path="/app" element={<ProtectedRoute><WorkspacePage /></ProtectedRoute>} />
       <Route path="/app/profile/:userId" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<NotFoundPage />} />

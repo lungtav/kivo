@@ -6,7 +6,7 @@ type PaletteItem =
   | { kind: "space"; id: string; label: string }
   | { kind: "channel"; id: string; label: string; spaceId: string; spaceName: string }
   | { kind: "dm"; id: string; label: string; peerId?: string }
-  | { kind: "person"; id: string; label: string; username: string };
+  | { kind: "person"; id: string; label: string; username: string; avatarUrl?: string | null };
 
 type Group = { title: string; items: PaletteItem[] };
 
@@ -24,12 +24,24 @@ type Props = {
 
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
+// bolds the matched part of a search hit
+const highlight = (label: string, needle: string) => {
+  const query = needle.trim().replace(/^@/, "");
+  if (!query) return label;
+  const index = label.toLowerCase().indexOf(query.toLowerCase());
+  if (index === -1) return label;
+  return <>{label.slice(0, index)}<mark className="bg-transparent font-semibold text-foreground">{label.slice(index, index + query.length)}</mark>{label.slice(index + query.length)}</>;
+};
+
 export function CommandPalette({ onClose, spaces, space, conversations, onSelectSpace, onOpenChannel, onSelectDirect, onCreateDirect, onViewProfile }: Props) {
   const [query, setQuery] = useState("");
-  const [people, setPeople] = useState<Peer[] | null>(null);
+  const [recent, setRecent] = useState<Peer[]>([]);
+  const [results, setResults] = useState<Peer[] | null>(null);
+  const [searching, setSearching] = useState(false);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const searchId = useRef(0);
   const trimmed = query.trim();
   const lower = trimmed.toLowerCase();
 
@@ -38,25 +50,31 @@ export function CommandPalette({ onClose, spaces, space, conversations, onSelect
     [space],
   );
 
-  // people come from the search API for real queries, from your peers otherwise
+  // recent contacts for the idle state; live API search once the query is meaningful.
+  // late responses are ignored so results always match the current query.
+  useEffect(() => {
+    void listPeers()
+      .then(({ peers }) => setRecent(peers.slice(0, 8)))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (trimmed.length < 2) {
-      setPeople(null);
+      setResults(null);
+      setSearching(false);
       return;
     }
+    setResults(null);
+    setSearching(true);
+    const id = (searchId.current += 1);
     const timer = window.setTimeout(() => {
       void searchUsers(trimmed)
-        .then(({ peers }) => setPeople(peers))
-        .catch(() => setPeople([]));
+        .then(({ peers }) => { if (searchId.current === id) setResults(peers); })
+        .catch(() => { if (searchId.current === id) setResults([]); })
+        .finally(() => { if (searchId.current === id) setSearching(false); });
     }, 200);
     return () => window.clearTimeout(timer);
   }, [trimmed]);
-
-  useEffect(() => {
-    void listPeers()
-      .then(({ peers }) => setPeople((current) => current ?? peers.slice(0, 8)))
-      .catch(() => {});
-  }, []);
 
   const groups: Group[] = useMemo(() => {
     const match = (label: string) => !lower || label.toLowerCase().includes(lower);
@@ -67,12 +85,18 @@ export function CommandPalette({ onClose, spaces, space, conversations, onSelect
     if (spaceItems.length) groups.push({ title: "Spaces", items: spaceItems });
     if (channelItems.length) groups.push({ title: "Channels", items: channelItems });
     if (dmItems.length) groups.push({ title: "Direct messages", items: dmItems });
-    if (people) {
-      const personItems: PaletteItem[] = people.filter((peer) => match(peer.display_name) || match(peer.username)).map((peer) => ({ kind: "person", id: peer.id, label: peer.display_name, username: peer.username }));
+    if (trimmed.length >= 2) {
+      // the server already ranked and filtered — show exactly what it returned
+      if (!searching) {
+        const personItems: PaletteItem[] = (results ?? []).map((peer) => ({ kind: "person", id: peer.id, label: peer.display_name, username: peer.username, avatarUrl: peer.avatar_url }));
+        if (personItems.length) groups.push({ title: "People", items: personItems });
+      }
+    } else if (recent.length) {
+      const personItems: PaletteItem[] = recent.filter((peer) => match(peer.display_name) || match(peer.username)).map((peer) => ({ kind: "person", id: peer.id, label: peer.display_name, username: peer.username, avatarUrl: peer.avatar_url }));
       if (personItems.length) groups.push({ title: "People", items: personItems });
     }
     return groups;
-  }, [spaces, channels, conversations, people, lower]);
+  }, [spaces, channels, conversations, recent, results, searching, trimmed, lower]);
 
   const flat = useMemo(() => groups.flatMap((group) => group.items), [groups]);
   useEffect(() => { setActive(0); }, [query]);
@@ -96,6 +120,7 @@ export function CommandPalette({ onClose, spaces, space, conversations, onSelect
     if (item.kind === "space") return <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary text-[8px] font-bold text-primary-foreground">{initials(item.label)}</span>;
     if (item.kind === "channel") return <Hash size={14} className="shrink-0 text-muted-foreground" />;
     if (item.kind === "dm") return <MessageCircle size={14} className="shrink-0 text-muted-foreground" />;
+    if (item.avatarUrl) return <img src={item.avatarUrl} alt="" className="size-6 shrink-0 rounded-full object-cover" />;
     return <User size={14} className="shrink-0 text-muted-foreground" />;
   };
 
@@ -121,7 +146,8 @@ export function CommandPalette({ onClose, spaces, space, conversations, onSelect
           <kbd className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">esc</kbd>
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
-          {flat.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">{trimmed.length >= 2 && people !== null ? "Nothing matches that search." : "Type to search spaces, channels and people."}</p>}
+          {flat.length === 0 && !searching && <p className="px-3 py-6 text-center text-sm text-muted-foreground">{trimmed.length >= 2 ? "Nothing matches that search." : "Type to search spaces, channels and people."}</p>}
+          {searching && <p className="px-3 py-3 text-center text-xs text-muted-foreground">Searching people…</p>}
           {groups.map((group) => (
             <div key={group.title} className="mb-1">
               <p className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground/70">{group.title}</p>
@@ -136,8 +162,8 @@ export function CommandPalette({ onClose, spaces, space, conversations, onSelect
                     className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm ${index === active ? "bg-foreground/5 text-foreground" : "text-muted-foreground"}`}
                   >
                     {iconFor(item)}
-                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {item.kind === "person" && <span className="shrink-0 text-xs text-muted-foreground/70">@{item.username}</span>}
+                    <span className="min-w-0 flex-1 truncate">{item.kind === "person" ? highlight(item.label, trimmed) : item.label}</span>
+                    {item.kind === "person" && <span className="shrink-0 text-xs text-muted-foreground/70">@{highlight(item.username, trimmed)}</span>}
                     {item.kind === "channel" && <span className="shrink-0 text-xs text-muted-foreground/70">{item.spaceName}</span>}
                     {item.kind === "person" && trimmed.length >= 2 && (
                       <span className="shrink-0 rounded-md border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground" onMouseDown={(event) => { event.stopPropagation(); onViewProfile(item.id); }}>Profile</span>

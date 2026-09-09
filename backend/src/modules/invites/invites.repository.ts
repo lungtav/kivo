@@ -35,6 +35,19 @@ export const findInviteById = async (inviteId: string) => {
   return result.rows[0] ?? null;
 };
 
+export const findInvitePreviewByCode = async (code: string) => {
+  const result = await db.query(
+    `SELECT i.id, i.space_id, i.code, i.max_uses, i.uses_count, i.expires_at, i.revoked_at,
+       s.name AS space_name, s.avatar_url AS space_avatar_url,
+       (SELECT COUNT(*)::int FROM space_members m WHERE m.space_id = i.space_id AND m.left_at IS NULL) AS member_count
+     FROM space_invites i
+     JOIN spaces s ON s.id = i.space_id AND s.deleted_at IS NULL
+     WHERE i.code = $1`,
+    [code],
+  );
+  return result.rows[0] ?? null;
+};
+
 export const revokeInvite = async (inviteId: string) => {
   const result = await db.query(
     `UPDATE space_invites SET revoked_at = NOW()

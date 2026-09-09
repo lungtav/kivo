@@ -28,6 +28,12 @@ export const env = {
       ? "debug"
       : "info",
   JWT_SECRET_KEY: validateURL("JWT_SECRET_KEY"),
+  // Explicit override for the auth refresh cookie. Unset = secure in
+  // production (HTTPS). Set "false" for plain-HTTP deploys (local compose),
+  // otherwise browsers drop the Secure cookie and refresh silently breaks.
+  cookieSecure: process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : undefined,
   redisUrl: validateURL("REDIS_URL"),
   resendKey: validateURL("RESEND_KEY"),
   APP_URL: validateURL("APP_URL"),

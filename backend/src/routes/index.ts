@@ -8,6 +8,7 @@ import { attachmentsRouter } from "./attachments.routes.js";
 import { conversationsRouter } from "./conversations.routes.js";
 import { meRouter, usersRouter } from "./users.routes.js";
 import { callsRouter } from "./calls.routes.js";
+import { invitesRouter } from "./invites.routes.js";
 
 const appRouter = Router();
 
@@ -16,6 +17,8 @@ appRouter.get("/health", (_req, res) => {
 });
 
 appRouter.use("/auth", authRouter);
+// public invite previews for share links (no authMiddleware here)
+appRouter.use("/invites", invitesRouter);
 appRouter.use("/spaces", authMiddleware, spacesRouter);
 appRouter.use("/channel", authMiddleware, channelsRouter);
 appRouter.use("/messages", authMiddleware, messagesRouter);

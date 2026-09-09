@@ -1,0 +1,7 @@
+.env
+.env.example
+.gitignore
+.vscode
+docker-compose*
+node_modules
+dist

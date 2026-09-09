@@ -1,0 +1,9 @@
+services:
+  backend:
+    environment:
+      APP_URL: ${APP_URL:?Set APP_URL, e.g. APP_URL=https://yourdomain.com}
+      COOKIE_SECURE: "true"
+
+  worker:
+    environment:
+      APP_URL: ${APP_URL:?Set APP_URL, e.g. APP_URL=https://yourdomain.com}
