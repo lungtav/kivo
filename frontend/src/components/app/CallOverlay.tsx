@@ -300,7 +300,7 @@ export function CallOverlay() {
   return (
     <div className="fixed inset-0 z-[70] bg-black text-white">
       <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 size-full object-cover" />
-      {call.video && <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-24 right-6 h-44 w-60 rounded-2xl border border-white/20 object-cover shadow-2xl" />}
+      {call.video && <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-20 right-4 h-28 w-40 rounded-2xl border border-white/20 object-cover shadow-2xl sm:bottom-24 sm:right-6 sm:h-44 sm:w-60" />}
 
       <div className="absolute left-6 top-6">
         <p className="text-lg font-semibold">{call.peerName}</p>
@@ -308,7 +308,7 @@ export function CallOverlay() {
       </div>
 
       {call.direction === "in" && call.status === "ringing" ? (
-        <div className="absolute inset-0 grid place-items-center bg-black/70">
+        <div className="absolute inset-0 grid place-items-center bg-black/70 p-4">
           <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#12121a] p-8 text-center">
             <p className="text-xs uppercase tracking-[.18em] text-white/40">Incoming {call.video ? "video" : "voice"} call</p>
             <p className="mt-3 truncate text-2xl font-bold">{call.peerName}</p>
