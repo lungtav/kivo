@@ -45,6 +45,7 @@ type WorkspaceShellProps = {
     conversationsLoading: boolean;
     hasConversations: boolean;
     onOpenPalette: () => void;
+    onBack?: () => void;
   }) => ReactNode;
 };
 
@@ -68,6 +69,13 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [selfId, setSelfId] = useState<string | null>(null);
   const pendingChannelRef = useRef<string | null>(null);
   const onPresence = (userId: string, online: boolean) => setPresence((prev) => ({ ...prev, [userId]: online }));
+  // on phones an open chat takes the whole screen (rail hidden, back button in header)
+  const chatOpen = (view === "home" && selectedDirectId !== null) || (view === "space" && selectedChannelId !== null);
+  const goBackToList = () => {
+    setSelectedChannelId(null);
+    setSelectedDirectId(null);
+    setIsSidebarOpen(true);
+  };
   // on phones the panel overlays the chat — dismiss it once a destination is picked
   const closePanelOnMobile = () => {
     if (typeof window !== "undefined" && window.innerWidth < 768) setIsSidebarOpen(false);
@@ -303,6 +311,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
       <WorkspaceSidebar
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen((open) => !open)}
+        hideRailOnMobile={chatOpen}
         spaces={spaces}
         space={space}
         selectedSpaceId={selectedSpaceId}
@@ -331,7 +340,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
         onJoinSpace={joinWithCode}
       />
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence, conversationsLoading, hasConversations: conversations.length > 0, onOpenPalette: () => setPaletteOpen(true) })}
+        {children({ view, selectedSpace, selectedChannel, refreshConversations, onConversationActivity, onOpenMembers: () => setMembersOpen(true), onPresence, conversationsLoading, hasConversations: conversations.length > 0, onOpenPalette: () => setPaletteOpen(true), onBack: chatOpen ? goBackToList : undefined })}
       <CallOverlay />
       {paletteOpen && <CommandPalette
         onClose={() => setPaletteOpen(false)}

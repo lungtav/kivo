@@ -31,9 +31,9 @@ import {
 } from "../../lib/workspace";
 
 type Props = {
-  isOpen: boolean; onToggle: () => void; spaces: Space[]; space: SpaceStructure | null;
-  view: "home" | "space"; onSelectHome: () => void;
-  selectedSpaceId: string | null; selectedChannelId: string | null;
+  isOpen: boolean; onToggle: () => void; hideRailOnMobile: boolean;
+  spaces: Space[]; space: SpaceStructure | null;
+  view: "home" | "space"; onSelectHome: () => void;  selectedSpaceId: string | null; selectedChannelId: string | null;
   membersOpen: boolean; onMembersOpenChange: (open: boolean) => void;
   selfId: string | null; conversationsLoading: boolean;
   presence: Record<string, boolean>;
@@ -52,7 +52,7 @@ type Deleting = { kind: "space" | "category" | "channel"; id?: string; name: str
 const initials = (name: string) => name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
 
 export function WorkspaceSidebar(props: Props) {
-  const { isOpen, onToggle, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect, membersOpen, onMembersOpenChange, presence, selfId, conversationsLoading } = props;
+  const { isOpen, onToggle, hideRailOnMobile, spaces, space, selectedSpaceId, selectedChannelId, onSelectSpace, onSelectChannel, view, onSelectHome, directMessages, selectedDirectId, onSelectDirect, membersOpen, onMembersOpenChange, presence, selfId, conversationsLoading } = props;
   const navigate = useNavigate();
   const [creating, setCreating] = useState<Creating>(null);
   const [deleting, setDeleting] = useState<Deleting>(null);
@@ -197,7 +197,7 @@ export function WorkspaceSidebar(props: Props) {
   };
 
   return <aside className="relative flex h-full shrink-0 overflow-hidden bg-background text-foreground">
-    <nav className="flex h-full w-[72px] flex-col items-center gap-2 border-r border-border bg-muted py-3">
+    <nav className={`${hideRailOnMobile ? "hidden md:flex" : "flex"} h-full w-[72px] flex-col items-center gap-2 border-r border-border bg-muted py-3`}>
       <button onClick={() => { onMembersOpenChange(false); setSettingsOpen(false); onSelectHome(); }} className={`relative grid size-11 place-items-center rounded-xl border transition ${view === "home" ? "border-transparent bg-primary text-primary-foreground shadow-sm" : "border-border bg-card text-muted-foreground hover:text-foreground"}`} aria-label="Direct messages"><MessageCircle size={19} />{totalUnread > 0 && view !== "home" && <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground ring-2 ring-muted">{totalUnread > 9 ? "9+" : totalUnread}</span>}</button>
       <button onClick={onToggle} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label={isOpen ? "Close workspace sidebar" : "Open workspace sidebar"}>{isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}</button>
       <div className="my-1 h-px w-8 bg-border" />
