@@ -68,6 +68,10 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const [selfId, setSelfId] = useState<string | null>(null);
   const pendingChannelRef = useRef<string | null>(null);
   const onPresence = (userId: string, online: boolean) => setPresence((prev) => ({ ...prev, [userId]: online }));
+  // on phones the panel overlays the chat — dismiss it once a destination is picked
+  const closePanelOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) setIsSidebarOpen(false);
+  };
 
   useEffect(() => {
     void getMe().then(({ user }) => setSelfId(user.id)).catch(() => {});
@@ -154,10 +158,12 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const selectSpace = (id: string) => {
     setView("space");
     setSelectedSpaceId(id);
+    closePanelOnMobile();
   };
 
   const openChannel = (spaceId: string, channelId: string) => {
     setView("space");
+    closePanelOnMobile();
     if (spaceId === selectedSpaceId) {
       setSelectedChannelId(channelId);
       setSelectedDirectId(null);
@@ -170,16 +176,19 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
   const selectHome = () => {
     setView("home");
     setSelectedChannelId(null);
+    closePanelOnMobile();
   };
 
   const selectChannel = (id: string) => {
     setSelectedDirectId(null);
     setSelectedChannelId(id);
+    closePanelOnMobile();
   };
 
   const selectDirect = (id: string) => {
     setSelectedChannelId(null);
     setSelectedDirectId(id);
+    closePanelOnMobile();
   };
 
   const addCategory = async (name: string) => {
@@ -209,6 +218,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setSelectedDirectId(conversation.id);
     setSelectedChannelId(null);
     setView("home");
+    closePanelOnMobile();
   };
 
   const addDirect = async (userId: string) => {
@@ -216,6 +226,7 @@ export function WorkspaceShell({ children }: WorkspaceShellProps) {
     setConversations((items) => [conversation, ...items.filter((item) => item.id !== conversation.id)]);
     setSelectedDirectId(conversation.id);
     setSelectedChannelId(null);
+    closePanelOnMobile();
   };
 
   const removeChannel = async (channelId: string) => {
