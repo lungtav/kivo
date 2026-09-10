@@ -8,8 +8,8 @@ export default function HeroSection() {
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(0,0,0,.13)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,.13)_1px,transparent_1px)] bg-size-[32px_32px] [mask-image:radial-gradient(80rem_60rem_at_50%_-5%,black,transparent)]" />
       <div className="pointer-events-none absolute -right-32 top-40 size-96 rounded-full border-2 border-neutral-400" />
       <div className="pointer-events-none absolute -right-16 top-56 size-96 rounded-full border border-neutral-400" />
-      <main className="relative mx-auto max-w-5xl px-6 pt-40 pb-20 text-center">
-        <h1 className="mx-auto max-w-2xl text-5xl font-bold tracking-tight text-neutral-950 sm:text-6xl">
+      <main className="relative mx-auto max-w-5xl px-6 pt-24 pb-16 text-center sm:pt-40 sm:pb-20">
+        <h1 className="mx-auto max-w-2xl text-4xl font-bold tracking-tight text-neutral-950 sm:text-6xl">
           Space for your team, friends and communities
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-neutral-500">

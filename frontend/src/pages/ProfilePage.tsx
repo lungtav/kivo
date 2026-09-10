@@ -42,7 +42,7 @@ export default function ProfilePage() {
   const isSelf = profile?.user && "email" in profile.user;
   const joinedAt = profile?.user.created_at ? new Date(profile.user.created_at).toLocaleDateString(undefined, { dateStyle: "long" }) : null;
 
-  return <main className="min-h-svh bg-background text-foreground"><div className="mx-auto max-w-2xl px-6 py-10">
+  return <main className="min-h-svh bg-background text-foreground"><div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
     <Link to="/app" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> Back to workspace</Link>
     {error && <p role="alert" className="mt-8 rounded-xl border border-red-400/30 bg-red-400/[.06] px-4 py-3 text-sm text-red-300">{error}</p>}
     {!profile && !error && (
