@@ -12,6 +12,7 @@ export const createApp = () => {
   const app = express();
   app.use(helmet());
   app.use(cors({ origin: env.APP_URL, credentials: true }));
+  console.log("CORS origin configured as:", JSON.stringify(env.APP_URL));
 
   app.use((req, res, next) => {
     const startedAt = Date.now();
