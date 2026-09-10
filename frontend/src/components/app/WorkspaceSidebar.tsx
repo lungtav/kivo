@@ -207,8 +207,8 @@ export function WorkspaceSidebar(props: Props) {
       <button onClick={() => setSettingsOpen(true)} className="mt-auto grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Settings"><Settings size={19} /></button>
     </nav>
     {isOpen && <div className="fixed inset-0 z-20 bg-black/40 md:hidden" onClick={onToggle} aria-hidden="true" />}
-    <div className={`absolute inset-y-0 left-[72px] z-30 overflow-hidden transition-[width,opacity] duration-200 md:static md:z-auto ${isOpen ? "w-80 max-w-[calc(100vw-4.5rem)] opacity-100 shadow-2xl md:shadow-none" : "w-0 opacity-0"}`}>
-      <div className="flex h-full w-80 max-w-full flex-col bg-secondary">
+    <div className={`fixed inset-y-0 left-0 z-30 overflow-hidden transition-[width,opacity] duration-200 md:static md:z-auto ${isOpen ? "w-[85vw] max-w-80 opacity-100 shadow-2xl md:w-80 md:shadow-none" : "w-0 opacity-0"}`}>
+      <div className="flex h-full w-full flex-col bg-secondary">
         {settingsOpen ? <SettingsPanel onBack={() => setSettingsOpen(false)} /> : membersOpen ? <MembersPanel spaceId={space?.id ?? null} canManage={canManage} ownRole={space?.role ?? null} onBack={() => onMembersOpenChange(false)} onLeaveSpace={props.onLeaveSpace} onViewProfile={viewProfile} presence={presence} /> : view === "home" ? <>
           <div className="border-b border-border bg-card px-5 py-4">
             <div className="flex items-center justify-between gap-3"><h2 className="truncate text-base font-semibold">Direct messages</h2><button onClick={openMemberPicker} className="rounded-md p-1.5 text-muted-foreground hover:bg-foreground/5 hover:text-foreground" aria-label="Start a conversation"><Plus size={16} /></button></div>
