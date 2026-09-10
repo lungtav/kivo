@@ -261,12 +261,17 @@ export function CallOverlay() {
 
   const acceptCall = async () => {
     setCall((current) => (current ? { ...current, status: "connecting" } : current));
-    getRealtimeSocket()?.emit("call:accept", { toUserId: peerRef.current });
+    // acquire media BEFORE signalling ready — otherwise the offer/answer
+    // completes without our tracks (mobile permission prompts are slow)
+    // and the caller never receives our video, with no renegotiation after.
     try {
       await getMedia(call?.video ?? true);
     } catch {
-      hangup(true);
+      getRealtimeSocket()?.emit("call:decline", { toUserId: peerRef.current });
+      hangup(false);
+      return;
     }
+    getRealtimeSocket()?.emit("call:accept", { toUserId: peerRef.current });
   };
 
   const toggleMute = () => {
