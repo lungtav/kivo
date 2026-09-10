@@ -10,7 +10,7 @@ import { UnauthorizedError } from "../../shared/errors/UnauthorizedError.js";
 const refreshCookieOptions = {
   httpOnly: true,
   secure: env.cookieSecure ?? env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  sameSite: "none" as const,
   path: "/api/auth",
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
